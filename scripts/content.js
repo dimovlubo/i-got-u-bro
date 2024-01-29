@@ -131,7 +131,7 @@ function getAchievementHTML() {
   const achievements = [
     `<a href="#" class="position-relative"
     ><img
-      src="https://github.githubassets.com/images/modules/profile/achievements/pull-shark-default.png"
+      src="${getImageUrl("badges/pull-shark-default.png")}"
       data-hovercard-type="achievement"
       width="64"
       alt="Achievement: Pull Shark"
@@ -145,7 +145,7 @@ function getAchievementHTML() {
   >`,
     `<a href="#" class="position-relative"
   ><img
-    src="https://github.githubassets.com/images/modules/profile/achievements/yolo-default.png"
+    src="${getImageUrl("badges/yolo-default.png")}"
     data-hovercard-type="achievement"
     width="64"
     alt="Achievement: YOLO"
@@ -154,7 +154,7 @@ function getAchievementHTML() {
 >`,
     `<a href="#" class="position-relative"
 ><img
-  src="https://github.githubassets.com/images/modules/profile/achievements/quickdraw-default.png"
+  src="${getImageUrl("badges/quickdraw-default.png")}"
   data-hovercard-type="achievement"
   width="64"
   alt="Achievement: Quickdraw"
@@ -163,7 +163,7 @@ function getAchievementHTML() {
 >`,
     `<a href="#" class="position-relative"
 ><img
-  src="https://github.githubassets.com/images/modules/profile/achievements/starstruck-default.png"
+  src="${getImageUrl("badges/starstruck-default.png")}"
   data-hovercard-type="achievement"
   width="64"
   alt="Achievement: Starstruck"
@@ -177,7 +177,7 @@ function getAchievementHTML() {
 >`,
     `<a href="#" class="position-relative"
 ><img
-  src="https://github.githubassets.com/images/modules/profile/achievements/pair-extraordinaire-default.png"
+  src="${getImageUrl("badges/pair-extraordinaire-default.png")}"
   data-hovercard-type="achievement"
   width="64"
   alt="Achievement: Pair Extraordinaire"
@@ -191,7 +191,7 @@ function getAchievementHTML() {
 >`,
     `<a href="#" class="position-relative"
 ><img
-  src="https://github.githubassets.com/images/modules/profile/achievements/public-sponsor-default.png"
+  src="${getImageUrl("badges/public-sponsor-default.png")}"
   data-hovercard-type="achievement"
   width="64"
   alt="Achievement: Public Sponsor"
@@ -200,7 +200,7 @@ function getAchievementHTML() {
 >`,
     `<a href="#" class="position-relative"
 ><img
-  src="https://github.githubassets.com/images/modules/profile/achievements/mars-2020-contributor-default.png"
+  src="${getImageUrl("badges/mars-2020-contributor-default.png")}"
   data-hovercard-type="achievement"
   width="64"
   alt="Achievement: Mars 2020 Contributor"
@@ -209,7 +209,7 @@ function getAchievementHTML() {
 >`,
     `<a href="#" class="position-relative"
 ><img
-  src="https://github.githubassets.com/images/modules/profile/achievements/arctic-code-vault-contributor-default.png"
+  src="${getImageUrl("badges/arctic-code-vault-contributor-default.png")}"
   data-hovercard-type="achievement"
   width="64"
   alt="Achievement: Arctic Code Vault Contributor"
@@ -233,7 +233,7 @@ function getAchievementHTML() {
       data-view-component="true"
       class="Label Label--success Label--inline text-normal px-2 mr-1"
       >Beta</span
-    ><a class="text-small" href="/orgs/community/discussions/categories/profile"
+    ><a class="text-small" href="#"
       >Send feedback</a
     >
   </div>
@@ -490,4 +490,8 @@ function getHighlightsHtml() {
 </li>
 </ul></div>
   `;
+}
+
+function getImageUrl(url) {
+  return chrome.runtime.getURL(url);
 }

@@ -22,6 +22,12 @@
     },
     "default_title": "✈️ Travel back in time. 👾 Just for fun."
   },
+  "web_accessible_resources": [
+    {
+      "resources": [ "badges/*.png" ],
+      "matches": ["https://github.com/*"]
+    }
+  ],
   "permissions": ["scripting", "activeTab"],
   "commands": {
     "_execute_action": {

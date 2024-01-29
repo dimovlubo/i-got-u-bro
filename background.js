@@ -24,7 +24,7 @@ chrome.action.onClicked.addListener(async (tab) => {
         tabId: tab.id,
         path: 'images/icon-48.png'
       })
-
+      
     } else {
       isSwitchedOn = true;
 
