@@ -1,58 +1,82 @@
-
 (() => {
-
-
-  const calendarDays = document.querySelectorAll("tbody .ContributionCalendar-day");
+  const calendarDays = document.querySelectorAll(
+    "tbody .ContributionCalendar-day"
+  );
   if (calendarDays.length > 0) {
-    calendarDays.forEach((calendarDay) => calendarDay.setAttribute('data-level', getRandomInt(4)))
+    calendarDays.forEach((calendarDay) =>
+      calendarDay.setAttribute("data-level", getRandomInt(4))
+    );
   }
 
   const repositoriesCounters = document.querySelectorAll(".Counter");
   if (repositoriesCounters.length > 0) {
-    repositoriesCounters.forEach(counter => {
-      counter.textContent = getRandomInt(60, 180)
-    })
+    repositoriesCounters.forEach((counter) => {
+      counter.textContent = getRandomInt(60, 180);
+    });
   }
 
-  const popularRepositoriesList = document.querySelector('.js-pinned-items-reorder-container ol');
+  const popularRepositoriesList = document.querySelector(
+    ".js-pinned-items-reorder-container ol"
+  );
   if (popularRepositoriesList) {
-    const popularReposLength = popularRepositoriesList.children.length
+    const popularReposLength = popularRepositoriesList.children.length;
 
     if (popularRepositoriesList.children.length < 6) {
-
       for (let repo = 0; repo < 6 - popularReposLength; repo++) {
-        const language = getRandomLanguage()
-        popularRepositoriesList.append(createDomElement(getSingleRepository({
-          name: getRandomRepoName(),
-          description: getRandomDescription(),
-          language: language,
-          languageColor: languageMap()[language],
-          forks: `${getRandomInt(1, 4)}.${getRandomInt(9)}k`,
-          stars: `${getRandomInt(1, 4)}.${getRandomInt(9)}k`
-
-        })))
+        const language = getRandomLanguage();
+        popularRepositoriesList.append(
+          createDomElement(
+            getSingleRepository({
+              name: getRandomRepoName(),
+              description: getRandomDescription(),
+              language: language,
+              languageColor: languageMap()[language],
+              forks: `${getRandomInt(1, 4)}.${getRandomInt(9)}k`,
+              stars: `${getRandomInt(1, 4)}.${getRandomInt(9)}k`,
+            })
+          )
+        );
       }
     }
-
   }
 
-  const profileFollowers = document.querySelector('.js-profile-editable-area a.Link--secondary span');
+  const profileFollowers = document.querySelector(
+    ".js-profile-editable-area a.Link--secondary span"
+  );
   if (profileFollowers) {
-    profileFollowers.innerText = `${getRandomInt(1, 4)}.${getRandomInt(9)}k`
+    profileFollowers.innerText = `${getRandomInt(1, 4)}.${getRandomInt(9)}k`;
   }
 
-  const profileAchievements = document.querySelector('.js-profile-editable-replace');
-  if (profileAchievements) {
-    //TODO: check in case there are some achievements
-    profileAchievements.append(createDomElement(getAchievementHTML()))
+  const profileAchievementsDetails = document.querySelector(
+    ".js-profile-editable-replace"
+  );
+  if (profileAchievementsDetails) {
+    const lastChild = profileAchievementsDetails.childNodes.length - 2;
+    const achievementsEl = createDomElement(getAchievementHTML());
+    const highlightsEl = createDomElement(getHighlightsHtml());
+    profileAchievementsDetails.insertBefore(
+      highlightsEl,
+      profileAchievementsDetails.childNodes[lastChild]
+    );
+    profileAchievementsDetails.insertBefore(
+      achievementsEl,
+      profileAchievementsDetails.childNodes[lastChild]
+    );
   }
 
-  const contributionsPerYear = document.querySelector('.js-yearly-contributions h2')
+  const contributionsPerYear = document.querySelector(
+    ".js-yearly-contributions h2"
+  );
   if (contributionsPerYear) {
-    contributionsPerYear.innerText = `${getRandomInt(1300, 30)} contributions in the last year`
+    contributionsPerYear.innerText = `${getRandomInt(
+      1300,
+      30
+    )} contributions in the last year`;
   }
 
-  const contributionsActivityList = document.querySelector('ul.filter-list.small');
+  const contributionsActivityList = document.querySelector(
+    "ul.filter-list.small"
+  );
   if (contributionsActivityList) {
     const yearsActivity = contributionsActivityList.children.length;
     const currentYear = new Date().getFullYear();
@@ -61,30 +85,39 @@
     const randomYear = getRandomInt(10, 3);
 
     if (yearDiff > currentYear - randomYear) {
-
       for (let i = 0; i < randomYear; i++) {
-        contributionsActivityList.append(createDomElement(getYearElement(yearDiff - i)))
+        contributionsActivityList.append(
+          createDomElement(getYearElement(yearDiff - i))
+        );
       }
-
     }
   }
 
-  const contributionActivityListing = document.querySelector('.contribution-activity-listing');
+  const contributionActivityListing = document.querySelector(
+    ".contribution-activity-listing"
+  );
   if (contributionActivityListing) {
-    contributionActivityListing.innerHTML = '';
-    contributionActivityListing.append(createDomElement(getActivityListing({
-      currentMonth: new Date().toLocaleDateString('default', { month: 'long' }),
-      currentYear: new Date().getFullYear(),
-      numContributions: getRandomInt(240),
-      currentMonthShort: new Date().toLocaleDateString('default', { month: 'short' }),
-      dayOfTheMonth: new Date().getDate()
-    })))
+    contributionActivityListing.innerHTML = "";
+    contributionActivityListing.append(
+      createDomElement(
+        getActivityListing({
+          currentMonth: new Date().toLocaleDateString("default", {
+            month: "long",
+          }),
+          currentYear: new Date().getFullYear(),
+          numContributions: getRandomInt(240),
+          currentMonthShort: new Date().toLocaleDateString("default", {
+            month: "short",
+          }),
+          dayOfTheMonth: new Date().getDate(),
+        })
+      )
+    );
   }
-
-})()
+})();
 
 function createDomElement(html) {
-  const dom = new DOMParser().parseFromString(html, 'text/html');
+  const dom = new DOMParser().parseFromString(html, "text/html");
   return dom.body.firstElementChild;
 }
 
@@ -95,7 +128,6 @@ function getRandomInt(max, min = 0) {
 }
 
 function getAchievementHTML() {
-
   const achievements = [
     `<a href="#" class="position-relative"
     ><img
@@ -142,7 +174,8 @@ function getAchievementHTML() {
   class="Label achievement-tier-label achievement-tier-label--bronze text-small text-bold color-shadow-medium px-2 py-0 mb-1 position-absolute right-0 bottom-0"
   >x${getRandomInt(4, 1)}</span
 ></a
->`, `<a href="#" class="position-relative"
+>`,
+    `<a href="#" class="position-relative"
 ><img
   src="https://github.githubassets.com/images/modules/profile/achievements/pair-extraordinaire-default.png"
   data-hovercard-type="achievement"
@@ -155,7 +188,8 @@ function getAchievementHTML() {
   class="Label achievement-tier-label achievement-tier-label--silver text-small text-bold color-shadow-medium px-2 py-0 mb-1 position-absolute right-0 bottom-0"
   >x${getRandomInt(4, 1)}</span
 ></a
->`, `<a href="#" class="position-relative"
+>`,
+    `<a href="#" class="position-relative"
 ><img
   src="https://github.githubassets.com/images/modules/profile/achievements/public-sponsor-default.png"
   data-hovercard-type="achievement"
@@ -163,7 +197,8 @@ function getAchievementHTML() {
   alt="Achievement: Public Sponsor"
   data-view-component="true"
   class="achievement-badge-sidebar" /></a
->`, `<a href="#" class="position-relative"
+>`,
+    `<a href="#" class="position-relative"
 ><img
   src="https://github.githubassets.com/images/modules/profile/achievements/mars-2020-contributor-default.png"
   data-hovercard-type="achievement"
@@ -171,7 +206,8 @@ function getAchievementHTML() {
   alt="Achievement: Mars 2020 Contributor"
   data-view-component="true"
   class="achievement-badge-sidebar" /></a
->`, `<a href="#" class="position-relative"
+>`,
+    `<a href="#" class="position-relative"
 ><img
   src="https://github.githubassets.com/images/modules/profile/achievements/arctic-code-vault-contributor-default.png"
   data-hovercard-type="achievement"
@@ -179,8 +215,8 @@ function getAchievementHTML() {
   alt="Achievement: Arctic Code Vault Contributor"
   data-view-component="true"
   class="achievement-badge-sidebar"
-/></a>`
-  ]
+/></a>`,
+  ];
 
   return `
   <div class="border-top color-border-muted pt-3 mt-3 d-none d-md-block">
@@ -188,7 +224,7 @@ function getAchievementHTML() {
     <a href="#" class="Link--primary mb-2">Achievements</a>
   </h2>
   <div class="d-flex flex-wrap">
-  ${achievements.slice(0, getRandomInt(achievements.length, 1)).join('\n')}
+  ${achievements.slice(0, getRandomInt(achievements.length, 1)).join("\n")}
   </div>
   <div class="mt-2">
     <span
@@ -202,10 +238,17 @@ function getAchievementHTML() {
     >
   </div>
 </div>
-  `
+  `;
 }
 
-function getSingleRepository({ name, description, language, languageColor, stars, forks }) {
+function getSingleRepository({
+  name,
+  description,
+  language,
+  languageColor,
+  stars,
+  forks,
+}) {
   return `
   <li class="mb-3 d-flex flex-content-stretch col-12 col-md-6 col-lg-6">
   <div class="Box pinned-item-list-item d-flex p-3 width-full public source">
@@ -299,50 +342,78 @@ function getSingleRepository({ name, description, language, languageColor, stars
     </div>
   </div>
 </li>
-  `
+  `;
 }
 
 function getRandomRepoName() {
-  const names = ['apple', 'microsoft', 'google', 'amazon', 'meta', 'tesla', 'samsung', 'netfilx', 'adobe', 'sap', 'uber', 'airbnb', 'paypal', 'spotify'];
-  const serviceNames = ['server', 'app', 'system', 'interview', 'test', 'roadmap', 'apis', 'algorithms', 'old', 'ai', 'ml'];
+  const names = [
+    "apple",
+    "microsoft",
+    "google",
+    "amazon",
+    "meta",
+    "tesla",
+    "samsung",
+    "netfilx",
+    "adobe",
+    "sap",
+    "uber",
+    "airbnb",
+    "paypal",
+    "spotify",
+  ];
+  const serviceNames = [
+    "server",
+    "app",
+    "system",
+    "interview",
+    "test",
+    "roadmap",
+    "apis",
+    "algorithms",
+    "old",
+    "ai",
+    "ml",
+  ];
 
-  return `${names[getRandomInt(names.length)]}-${serviceNames[getRandomInt(serviceNames.length)]}`
+  return `${names[getRandomInt(names.length)]}-${
+    serviceNames[getRandomInt(serviceNames.length)]
+  }`;
 }
 
 function getRandomDescription() {
-  const description = ['apple',]
-  return description[getRandomInt(description.length)]
+  const description = ["apple"];
+  return description[getRandomInt(description.length)];
 }
 
 function getRandomLanguage() {
   const languages = [
-    'HTML',
-    'JavaScript',
-    'TypeScript',
-    'CSS',
-    'Python',
-    'Go',
-    'PHP',
-    'C++',
-    'Java'
-  ]
+    "HTML",
+    "JavaScript",
+    "TypeScript",
+    "CSS",
+    "Python",
+    "Go",
+    "PHP",
+    "C++",
+    "Java",
+  ];
 
-  return languages[getRandomInt(languages.length)]
+  return languages[getRandomInt(languages.length)];
 }
 
 function languageMap() {
-
   return {
-    'HTML': '#e34c26',
-    'JavaScript': '#f1e05a',
-    'TypeScript': '#3178c6',
-    'CSS': "#563d7c",
-    'Python': "#3572A5",
-    'Go': '#00ADD8',
-    'PHP': '#4F5D95',
-    'C++': '#f34b7d',
-    'Java': '#b07219'
-  }
+    HTML: "#e34c26",
+    JavaScript: "#f1e05a",
+    TypeScript: "#3178c6",
+    CSS: "#563d7c",
+    Python: "#3572A5",
+    Go: "#00ADD8",
+    PHP: "#4F5D95",
+    "C++": "#f34b7d",
+    Java: "#b07219",
+  };
 }
 
 function getYearElement(year) {
@@ -358,10 +429,16 @@ function getYearElement(year) {
   >
 </li>
 
-  `
+  `;
 }
 
-function getActivityListing({ currentMonth, currentYear, numContributions, currentMonthShort, dayOfTheMonth }) {
+function getActivityListing({
+  currentMonth,
+  currentYear,
+  numContributions,
+  currentMonthShort,
+  dayOfTheMonth,
+}) {
   return `
   <div class="width-full pb-4">
   <h3 class="h6 pr-2 py-1 border-bottom mb-3" style="height: 14px">
@@ -398,5 +475,19 @@ function getActivityListing({ currentMonth, currentYear, numContributions, curre
   </div>
 </div>
 
-  `
+  `;
+}
+
+function getHighlightsHtml() {
+  return `
+  <div class="border-top color-border-muted pt-3 mt-3 d-none d-md-block"><h2 class="h4 mb-2">Highlights</h2><ul class="list-style-none"><li class="mt-2">
+    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-star color-fg-muted">
+    <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Zm0 2.445L6.615 5.5a.75.75 0 0 1-.564.41l-3.097.45 2.24 2.184a.75.75 0 0 1 .216.664l-.528 3.084 2.769-1.456a.75.75 0 0 1 .698 0l2.77 1.456-.53-3.084a.75.75 0 0 1 .216-.664l2.24-2.183-3.096-.45a.75.75 0 0 1-.564-.41L8 2.694Z"></path>
+</svg>
+<span title="Label: Pro" data-view-component="true" class="Label Label--purple text-uppercase">
+  Pro
+</span>
+</li>
+</ul></div>
+  `;
 }
