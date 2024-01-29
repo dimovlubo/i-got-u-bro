@@ -15,13 +15,23 @@
     });
   }
 
-  const popularRepositoriesList = document.querySelector(
-    ".js-pinned-items-reorder-container ol"
+  const popularRepositories = document.querySelector(
+    ".js-pinned-items-reorder-container"
   );
-  if (popularRepositoriesList) {
-    const popularReposLength = popularRepositoriesList.children.length;
+  if (popularRepositories) {
 
-    if (popularRepositoriesList.children.length < 6) {
+    const blankContainer = popularRepositories.querySelector('.blankslate-container');
+
+    if(blankContainer) {
+      blankContainer.innerHTML = ''
+      popularRepositories.append(createDomElement('<ol class="d-flex flex-wrap list-style-none gutter-condensed mb-4"></ol>'))
+
+    }
+    const popularRepositoriesList = popularRepositories.querySelector("ol");
+    let popularReposLength = popularRepositoriesList.children.length;
+    
+
+    if (popularReposLength < 6) {
       for (let repo = 0; repo < 6 - popularReposLength; repo++) {
         const language = getRandomLanguage();
         popularRepositoriesList.append(
@@ -51,6 +61,7 @@
     ".js-profile-editable-replace"
   );
   if (profileAchievementsDetails) {
+    console.log(profileAchievementsDetails.childNodes)
     const lastChild = profileAchievementsDetails.childNodes.length - 2;
     const achievementsEl = createDomElement(getAchievementHTML());
     const highlightsEl = createDomElement(getHighlightsHtml());
