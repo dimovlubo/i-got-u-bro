@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Focus Mode",
-  "description": "Enable focus mode on Chrome's official Extensions and Chrome Web Store documentation.",
+  "name": "I got you bro - BETA",
+  "description": "Preview of what the GitHub developer's page would have looked like, if he had done his job earlier.",
   "version": "1.0",
   "icons": {
     "16": "images/icon-16.png",
@@ -10,15 +10,17 @@
     "128": "images/icon-128.png"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "action": {
     "default_icon": {
-      "16": "images/icon-16.png",
-      "32": "images/icon-32.png",
-      "48": "images/icon-48.png",
-      "128": "images/icon-128.png"
-    }
+      "16": "images/icon-16-n.png",
+      "32": "images/icon-32-n.png",
+      "48": "images/icon-48-n.png",
+      "128": "images/icon-128-n.png"
+    },
+    "default_title": "✈️ Travel back in time. 👾 Just for fun."
   },
   "permissions": ["scripting", "activeTab"],
   "commands": {
