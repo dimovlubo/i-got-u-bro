@@ -267,16 +267,12 @@ function getSingleRepository({
       <div class="d-flex width-full flex-items-center">
         <span data-view-component="true" class="position-relative"
           ><a
-            id="82285884"
             href="#"
             data-view-component="true"
             class="min-width-0 Link text-bold flex-auto"
-            aria-describedby="tooltip-e5056631-fc6c-4e41-b6a8-2a6032d5646c"
           >
             <span class="repo"> ${name} </span> </a
           ><tool-tip
-            id="tooltip-e5056631-fc6c-4e41-b6a8-2a6032d5646c"
-            for="82285884"
             popover="manual"
             data-direction="s"
             data-type="description"
@@ -393,7 +389,19 @@ function getRandomRepoName() {
 }
 
 function getRandomDescription() {
-  const description = ["apple"];
+  const description = [
+    "A set of utility scripts for common development tasks.",
+    "An interactive web application for data visualization trends.",
+    "A lightweight framework for modern and elegant websites.",
+    "Machine learning algorithms implemented for education.",
+    "A collaborative project management tool for streamlined workflows.",
+    "Comprehensive code snippets for enhanced productivity.",
+    "Open-source app for tracking goals.",
+    "Minimalistic template with customizable functionality.",
+    "Collection of design patterns for scalable software.",
+    "Plugin for extending development tools."
+  ];
+  ;
   return description[getRandomInt(description.length)];
 }
 
