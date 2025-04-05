@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>I got u bro v2</title>
+    <script src="/scripts/popup.js" defer></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        width: 220px;
+        padding: 10px;
+      }
+      button {
+        width: 100%;
+        padding: 8px;
+        margin: 5px 0;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      /* Style for the red pill button */
+      #make-me-great {
+        background-color: #dc3545;
+        color: white;
+      }
+      #make-me-great:hover {
+        background-color: #a71d2a;
+      }
+      /* Style for the add custom text button */
+      #add-custom-text {
+        background-color: white;
+        color: #dc3545; /* Red text */
+        border: 1px solid #dc3545; /* Optional: Add a red border */
+      }
+      #add-custom-text:hover {
+        background-color: #f8d7da; /* Light red background on hover */
+      }
+      /* Style for the confirm button */
+      #confirm-text {
+        background-color: white;
+        color: #dc3545; /* Red text */
+        border: 1px solid #dc3545; /* Optional: Add a red border */
+      }
+      #confirm-text:hover {
+        background-color: #f8d7da; /* Light red background on hover */
+      }
+      /* Style for the reset button (blue pill) */
+      #reset-button {
+        background-color: #007bff;
+        color: white; /* White text */
+      }
+      #reset-button:hover {
+        background-color: #0056b3;
+      }
+      /* Style for the cancel button */
+      #cancel-text {
+        background-color: white;
+        color: #007bff; /* Blue text */
+        border: 1px solid #007bff; /* Blue border */
+      }
+      #cancel-text:hover {
+        background-color: #e7f1ff; /* Light blue background on hover */
+      }
+      /* Style for a disabled button */
+      button:disabled {
+        background-color: #ccc; /* Gray background */
+        color: #777; /* Lighter text color */
+        cursor: not-allowed; /* Change cursor to indicate the button is disabled */
+        border: 1px solid #ddd; /* Light border color */
+        opacity: 0.6; /* Slightly transparent to indicate disabled state */
+      }
+      /* Optional: Hover effect for disabled button */
+      button:disabled:hover {
+        background-color: #ccc; /* Keep the same background color when hovered */
+        color: #777; /* Keep the same text color when hovered */
+        cursor: not-allowed; /* Ensure cursor remains not-allowed */
+      }
+      input {
+        width: 90%;
+        padding: 5px;
+        margin-top: 5px;
+        display: none;
+      }
+      #error-message {
+        color: red;
+        font-size: 12px;
+        display: none;
+        margin-top: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <h3 style="text-align: center">I GOT U BRO V2</h3>
+    <button id="make-me-great">Take the RED pill</button>
+    <button id="add-custom-text">Take Custom pill</button>
+    <input
+      type="text"
+      id="custom-text-input"
+      maxlength="11"
+      placeholder="Enter text..."
+    />
+    <p id="error-message">Text must be between 1 and 10 characters!</p>
+    <button id="confirm-text">Confirm</button>
+    <button id="cancel-text">Cancel</button>
+    <button id="reset-button">Take the BLUE Pill</button>
+  </body>
+</html>

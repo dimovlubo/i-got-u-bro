@@ -1,115 +1,206 @@
 (() => {
-  const calendarDays = document.querySelectorAll(
-    "tbody .ContributionCalendar-day"
-  );
-  if (calendarDays.length > 0) {
-    calendarDays.forEach((calendarDay) =>
-      calendarDay.setAttribute("data-level", getRandomInt(4))
-    );
-  }
+  console.log("Content script loaded");
+  // Detect when the page refreshes and reset button states
+  window.addEventListener("load", () => {
+    chrome.runtime.sendMessage({ type: "PAGE_RELOADED" });
+  });
 
-  const repositoriesCounters = document.querySelectorAll(".Counter");
-  if (repositoriesCounters.length > 0) {
-    repositoriesCounters.forEach((counter) => {
-      counter.textContent = getRandomInt(60, 180);
-    });
-  }
-
-  const popularRepositories = document.querySelector(
-    ".js-pinned-items-reorder-container"
-  );
-  if (popularRepositories) {
-
-    const blankContainer = popularRepositories.querySelector('.blankslate-container');
-
-    if(blankContainer) {
-      blankContainer.innerHTML = ''
-      popularRepositories.append(createDomElement('<ol class="d-flex flex-wrap list-style-none gutter-condensed mb-4"></ol>'))
-
+  chrome.runtime.onMessage.addListener(function (request) {
+    if (request.type === "CUSTOM_TEXT") {
+      const text = request.payload.toUpperCase().trim().split("").map(String);
+      createAdvancedGrid(text);
+      loadModifications();
     }
-    const popularRepositoriesList = popularRepositories.querySelector("ol");
-    let popularReposLength = popularRepositoriesList.children.length;
-    
+  });
 
-    if (popularReposLength < 6) {
-      for (let repo = 0; repo < 6 - popularReposLength; repo++) {
-        const language = getRandomLanguage();
-        popularRepositoriesList.append(
+  createBasicGrid();
+  loadModifications();
+
+  function createAdvancedGrid(text) {
+    const mappedLetters = text.map((letter, index) => {
+      if (index === text.length - 1) {
+        return getLetter(letter);
+      }
+      return addZeroColumn(getLetter(letter));
+    });
+
+    const calendarDays = document.querySelectorAll(
+      "tbody .ContributionCalendar-day"
+    );
+
+    const lettersMatrix = transformNestedToMatrix(mappedLetters);
+
+    if (calendarDays.length > 0) {
+      calendarDays.forEach((calendarDay) => {
+        const getDayCoordinates = calendarDay.id.split("-").slice(-2);
+        const row = +getDayCoordinates[0];
+        const col = +getDayCoordinates[1];
+        const randomNum = getRandomInt(lettersMatrix[row][col], 3);
+
+        const tooltipId = calendarDay.getAttribute("aria-labelledby");
+        setTooltip(tooltipId, randomNum);
+
+        calendarDay.setAttribute("data-level", randomNum);
+      });
+    }
+  }
+  function createBasicGrid() {
+    const calendarDays = document.querySelectorAll(
+      "tbody .ContributionCalendar-day"
+    );
+
+    if (calendarDays.length > 0) {
+      calendarDays.forEach((calendarDay) => {
+        const randomNum = getRandomInt(5);
+        const tooltipId = calendarDay.getAttribute("aria-labelledby");
+        setTooltip(tooltipId, randomNum);
+
+        calendarDay.setAttribute("data-level", randomNum);
+      });
+    }
+  }
+  function createRepositoriesCounters() {
+    const repositoriesCounters = document.querySelectorAll(".Counter");
+    if (repositoriesCounters.length > 0) {
+      repositoriesCounters.forEach((counter) => {
+        counter.textContent = getRandomInt(60, 180);
+      });
+    }
+  }
+  function createPopularRepositories() {
+    const popularRepositories = document.querySelector(
+      ".js-pinned-items-reorder-container"
+    );
+
+    if (popularRepositories) {
+      const blankContainer = popularRepositories.querySelector(
+        ".blankslate-container"
+      );
+
+      if (blankContainer) {
+        blankContainer.innerHTML = "";
+        popularRepositories.append(
           createDomElement(
-            getSingleRepository({
-              name: getRandomRepoName(),
-              description: getRandomDescription(),
-              language: language,
-              languageColor: languageMap()[language],
-              forks: `${getRandomInt(1, 4)}.${getRandomInt(9)}k`,
-              stars: `${getRandomInt(1, 4)}.${getRandomInt(9)}k`,
-            })
+            '<ol class="d-flex flex-wrap list-style-none gutter-condensed mb-4"></ol>'
           )
         );
       }
-    }
-  }
+      const popularRepositoriesList = popularRepositories.querySelector("ol");
+      let popularReposLength = popularRepositoriesList.children.length;
 
-  const profileFollowers = document.querySelector(
-    ".js-profile-editable-area a.Link--secondary span"
-  );
-  if (profileFollowers) {
-    profileFollowers.innerText = `${getRandomInt(1, 4)}.${getRandomInt(9)}k`;
-  }
-
-  const profileAchievementsDetails = document.querySelector(
-    ".js-profile-editable-replace"
-  );
-  if (profileAchievementsDetails) {
-    console.log(profileAchievementsDetails.childNodes)
-    const lastChild = profileAchievementsDetails.childNodes.length - 2;
-    const achievementsEl = createDomElement(getAchievementHTML());
-    const highlightsEl = createDomElement(getHighlightsHtml());
-    profileAchievementsDetails.insertBefore(
-      highlightsEl,
-      profileAchievementsDetails.childNodes[lastChild]
-    );
-    profileAchievementsDetails.insertBefore(
-      achievementsEl,
-      profileAchievementsDetails.childNodes[lastChild]
-    );
-  }
-
-  const contributionsPerYear = document.querySelector(
-    ".js-yearly-contributions h2"
-  );
-  if (contributionsPerYear) {
-    contributionsPerYear.innerText = `${getRandomInt(
-      1300,
-      30
-    )} contributions in the last year`;
-  }
-
-  const contributionsActivityList = document.querySelector(
-    "ul.filter-list.small"
-  );
-  if (contributionsActivityList) {
-    const yearsActivity = contributionsActivityList.children.length;
-    const currentYear = new Date().getFullYear();
-    const yearDiff = currentYear - yearsActivity;
-
-    const randomYear = getRandomInt(10, 3);
-
-    if (yearDiff > currentYear - randomYear) {
-      for (let i = 0; i < randomYear; i++) {
-        contributionsActivityList.append(
-          createDomElement(getYearElement(yearDiff - i))
-        );
+      if (popularReposLength < 6) {
+        for (let repo = 0; repo < 6 - popularReposLength; repo++) {
+          const language = getRandomLanguage();
+          popularRepositoriesList.append(
+            createDomElement(
+              getSingleRepository({
+                name: getRandomRepoName(),
+                description: getRandomDescription(),
+                language: language,
+                languageColor: languageMap()[language],
+                forks: `${getRandomInt(1, 4)}.${getRandomInt(9)}k`,
+                stars: `${getRandomInt(1, 4)}.${getRandomInt(9)}k`,
+              })
+            )
+          );
+        }
       }
     }
   }
+  function createProfileFollowers() {
+    const profileFollowers = document.querySelector(
+      ".js-profile-editable-area a.Link--secondary span"
+    );
+    if (profileFollowers) {
+      profileFollowers.innerText = `${getRandomInt(4, 1)}.${getRandomInt(9)}k`;
+    }
+  }
+  function createProfileContainer() {
+    /*HEre TESTING */
+    const profileContainer = document.querySelector(
+      ".js-profile-editable-replace"
+    );
 
-  const contributionActivityListing = document.querySelector(
-    ".contribution-activity-listing"
-  );
-  if (contributionActivityListing) {
-    contributionActivityListing.innerHTML = "";
-    contributionActivityListing.append(
+    if (profileContainer) {
+      // Grab the user info section (avatar, name, bio, etc.)
+      const userInfoSection = profileContainer.querySelector(
+        ".js-profile-editable-area"
+      ).parentNode;
+
+      // Find the Block or Report button
+      const blockOrReportBtn = profileContainer.querySelector(
+        "button[id^='dialog-show-dialog'].Button"
+      );
+
+      // Determine where the "Block or Report" section begins
+      const blockReportIndex = Array.from(profileContainer.children).indexOf(
+        blockOrReportBtn
+      );
+
+      const userInfoSectionIndex = Array.from(
+        profileContainer.children
+      ).indexOf(userInfoSection);
+
+      // Preserve the original Block or Report section
+      const preservedTail = document.createDocumentFragment();
+
+      for (let i = 0; i <= userInfoSectionIndex; i++) {
+        preservedTail.appendChild(
+          profileContainer.children[i]?.cloneNode(true)
+        );
+      }
+
+      const highlightsEl = createDomElement(getHighlightsHtml());
+      const achievementsEl = createDomElement(getAchievementHTML());
+
+      preservedTail.appendChild(achievementsEl);
+      preservedTail.appendChild(highlightsEl);
+      preservedTail.appendChild(blockOrReportBtn);
+
+      profileContainer.innerHTML = "";
+
+      profileContainer.appendChild(preservedTail);
+    }
+  }
+  function createContributionPerYear() {
+    const contributionsPerYear = document.querySelector(
+      ".js-yearly-contributions h2"
+    );
+    if (contributionsPerYear) {
+      contributionsPerYear.innerText = `${getRandomInt(
+        1300,
+        30
+      )} contributions in the last year`;
+    }
+  }
+  function createContibuitonActivityList() {
+    const contributionsActivityList = document.querySelector(
+      "ul.filter-list.small"
+    );
+    if (contributionsActivityList) {
+      const yearsActivity = contributionsActivityList.children.length;
+      const currentYear = new Date().getFullYear();
+      const yearDiff = currentYear - yearsActivity;
+
+      const randomYear = getRandomInt(10, 3);
+
+      if (yearDiff > currentYear - randomYear) {
+        for (let i = 0; i < randomYear; i++) {
+          contributionsActivityList.append(
+            createDomElement(getYearElement(yearDiff - i))
+          );
+        }
+      }
+    }
+  }
+  function createContributionListing() {
+    const contributionActivityListing = document.querySelector(
+      ".contribution-activity-listing"
+    );
+    if (contributionActivityListing) {
+      contributionActivityListing.innerHTML = "";
+    }
+    contributionActivityListing?.append(
       createDomElement(
         getActivityListing({
           currentMonth: new Date().toLocaleDateString("default", {
@@ -125,6 +216,15 @@
       )
     );
   }
+  function loadModifications() {
+    createRepositoriesCounters();
+    createPopularRepositories();
+    createProfileFollowers();
+    createProfileContainer();
+    createContributionPerYear();
+    createContibuitonActivityList();
+    createContributionListing();
+  }
 })();
 
 function createDomElement(html) {
@@ -133,6 +233,7 @@ function createDomElement(html) {
 }
 
 function getRandomInt(max, min = 0) {
+  if (min >= max) return getRandomInt(2);
   min = Math.ceil(min);
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min) + min);
@@ -236,17 +337,6 @@ function getAchievementHTML() {
   </h2>
   <div class="d-flex flex-wrap">
   ${achievements.slice(0, getRandomInt(achievements.length, 1)).join("\n")}
-  </div>
-  <div class="mt-2">
-    <span
-      title="Feature Release Label: Beta"
-      aria-label="Feature Release Label: Beta"
-      data-view-component="true"
-      class="Label Label--success Label--inline text-normal px-2 mr-1"
-      >Beta</span
-    ><a class="text-small" href="#"
-      >Send feedback</a
-    >
   </div>
 </div>
   `;
@@ -399,9 +489,8 @@ function getRandomDescription() {
     "Open-source app for tracking goals.",
     "Minimalistic template with customizable functionality.",
     "Collection of design patterns for scalable software.",
-    "Plugin for extending development tools."
+    "Plugin for extending development tools.",
   ];
-  ;
   return description[getRandomInt(description.length)];
 }
 
@@ -513,4 +602,632 @@ function getHighlightsHtml() {
 
 function getImageUrl(url) {
   return chrome.runtime.getURL(url);
+}
+function getContributionsNum(num) {
+  if (!num) {
+    num = 0;
+  }
+
+  const contributionMap = {
+    0: {
+      min: 0,
+      max: 0,
+    },
+    1: {
+      min: 1,
+      max: 2,
+    },
+    2: {
+      min: 3,
+      max: 5,
+    },
+    3: {
+      min: 6,
+      max: 9,
+    },
+    4: {
+      min: 10,
+      max: 100,
+    },
+  };
+  return getRandomInt(contributionMap[num].max, contributionMap[num].min);
+}
+function setTooltip(tooltipId, randomNum) {
+  if (tooltipId) {
+    const tooltip = document.getElementById(tooltipId);
+    if (tooltip) {
+      let tooltipContributionNumToText = getContributionsNum(randomNum);
+      if (tooltipContributionNumToText === 0) {
+        tooltipContributionNumToText = "No contribution";
+      } else if (tooltipContributionNumToText === 1) {
+        tooltipContributionNumToText = "1 contribution";
+      } else {
+        tooltipContributionNumToText = `${tooltipContributionNumToText} contributions`;
+      }
+
+      const toolTipTextArr = tooltip.innerText.split(" on ");
+      tooltip.innerText = `${tooltipContributionNumToText} on ${
+        toolTipTextArr[toolTipTextArr.length - 1]
+      }`;
+    }
+  }
+}
+
+function createMatrixByNum(rows, cols, num = 0) {
+  return Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => num)
+  );
+}
+function addZeroColumn(matrix) {
+  // Check if the matrix has 7 rows
+  if (matrix.length !== 7) {
+    return createMatrixByNum(7, 5);
+  }
+
+  // Add a column of zeros to each row
+  for (let i = 0; i < matrix.length; i++) {
+    matrix[i].push(0); // Add 0 to the end of each row
+  }
+
+  return matrix; // Return the modified matrix
+}
+function transformNestedToMatrix(mappedLetters) {
+  const lettersTotalLenght = mappedLetters.reduce((acc, currArr) => {
+    if (currArr.length > 0) {
+      return acc + currArr[0].length;
+    }
+    return acc;
+  }, 0);
+  const ROWS = mappedLetters[0].length;
+  const COLS = lettersTotalLenght;
+
+  let matrix = createMatrixByNum(ROWS, COLS);
+
+  let colStart = 0;
+
+  // Iterate over each nested group
+  for (let group of mappedLetters) {
+    for (let row = 0; row < ROWS; row++) {
+      if (group[row]) {
+        // Ensure the row exists in the group
+        let values = group[row];
+        for (let i = 0; i < values.length; i++) {
+          if (colStart + i < COLS) {
+            matrix[row][colStart + i] = values[i];
+          }
+        }
+      }
+    }
+
+    // Move the starting column index forward for the next group
+    colStart += Math.max(...group.map((row) => row.length));
+
+    // Stop if we've reached or exceeded column limit
+    if (colStart >= COLS) break;
+  }
+
+  return matrix;
+}
+
+function getLetter(string = A) {
+  const DEF = createMatrixByNum(7, 53, getRandomInt(5));
+  const allLetters = {
+    A: [
+      [0, 0, 5, 0, 0],
+      [0, 5, 0, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 5, 5, 5, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+    ],
+    B: [
+      [5, 5, 5, 5, 0],
+      [0, 5, 0, 0, 5],
+      [0, 5, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+      [0, 5, 0, 0, 5],
+      [0, 5, 0, 0, 5],
+      [5, 5, 5, 5, 0],
+    ],
+    C: [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    D: [
+      [5, 5, 5, 5, 0],
+      [0, 5, 0, 0, 5],
+      [0, 5, 0, 0, 5],
+      [0, 5, 0, 0, 5],
+      [0, 5, 0, 0, 5],
+      [0, 5, 0, 0, 5],
+      [5, 5, 5, 5, 0],
+    ],
+    E: [
+      [5, 5, 5, 5, 5],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 5, 5, 5, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 5, 5, 5, 5],
+    ],
+    F: [
+      [5, 5, 5, 5, 5],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 5, 5, 5, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+    ],
+    G: [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 5, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    H: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 5, 5, 5, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+    ],
+    I: [
+      [5, 5, 5],
+      [0, 5, 0],
+      [0, 5, 0],
+      [0, 5, 0],
+      [0, 5, 0],
+      [0, 5, 0],
+      [5, 5, 5],
+    ],
+    J: [
+      [0, 0, 5, 5, 5],
+      [0, 0, 0, 5, 0],
+      [0, 0, 0, 5, 0],
+      [0, 0, 0, 5, 0],
+      [0, 0, 0, 5, 0],
+      [5, 0, 0, 5, 0],
+      [0, 5, 5, 0, 0],
+    ],
+    K: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 5, 0],
+      [5, 0, 5, 0, 0],
+      [5, 5, 0, 0, 0],
+      [5, 0, 5, 0, 0],
+      [5, 0, 0, 5, 0],
+      [5, 0, 0, 0, 5],
+    ],
+    L: [
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 5, 5, 5, 5],
+    ],
+    M: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 5, 0, 5, 5],
+      [5, 0, 5, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+    ],
+    N: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 5, 0, 0, 5],
+      [5, 0, 5, 0, 5],
+      [5, 0, 0, 5, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+    ],
+    O: [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    P: [
+      [5, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 5, 5, 5, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+    ],
+    Q: [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 5, 0, 0, 5],
+      [5, 0, 5, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    R: [
+      [5, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 5, 5, 5, 0],
+      [5, 0, 5, 0, 0],
+      [5, 0, 0, 5, 0],
+      [5, 0, 0, 0, 5],
+    ],
+    S: [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 0],
+      [0, 5, 5, 5, 0],
+      [0, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    T: [
+      [5, 5, 5, 5, 5],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+    ],
+    U: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    V: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 0, 5, 0],
+      [0, 5, 0, 5, 0],
+      [0, 5, 0, 5, 0],
+      [0, 0, 5, 0, 0],
+    ],
+    W: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 5, 0, 5],
+      [5, 0, 5, 0, 5],
+      [5, 5, 0, 5, 5],
+      [5, 0, 0, 0, 5],
+    ],
+    X: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 0, 5, 0],
+      [0, 0, 5, 0, 0],
+      [0, 5, 0, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+    ],
+    X: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 0, 5, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+    ],
+    Z: [
+      [5, 5, 5, 5, 5],
+      [0, 0, 0, 0, 5],
+      [0, 0, 0, 5, 0],
+      [0, 0, 5, 0, 0],
+      [0, 5, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 5, 5, 5, 5],
+    ],
+    0: [
+      [0, 0, 5, 0, 0],
+      [0, 5, 0, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 0, 5, 0],
+      [0, 0, 5, 0, 0],
+    ],
+    1: [
+      [0, 0, 5, 0, 0],
+      [0, 5, 5, 0, 0],
+      [5, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [5, 5, 5, 5, 5],
+    ],
+    2: [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [0, 0, 0, 0, 5],
+      [0, 0, 5, 5, 0],
+      [0, 5, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 5, 5, 5, 5],
+    ],
+    3: [
+      [5, 5, 5, 5, 5],
+      [0, 0, 0, 0, 5],
+      [0, 0, 0, 5, 0],
+      [0, 0, 5, 5, 0],
+      [0, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    4: [
+      [0, 0, 0, 5, 0],
+      [0, 0, 5, 5, 0],
+      [0, 5, 0, 5, 0],
+      [5, 0, 0, 5, 0],
+      [5, 5, 5, 5, 5],
+      [0, 0, 0, 5, 0],
+      [0, 0, 0, 5, 0],
+    ],
+    5: [
+      [5, 5, 5, 5, 5],
+      [5, 0, 0, 0, 0],
+      [5, 0, 5, 5, 0],
+      [5, 5, 0, 0, 5],
+      [0, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    6: [
+      [0, 0, 5, 5, 0],
+      [0, 5, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 5, 5, 0],
+      [5, 5, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    7: [
+      [5, 5, 5, 5, 5],
+      [0, 0, 0, 0, 5],
+      [0, 0, 0, 5, 0],
+      [0, 0, 0, 5, 0],
+      [0, 0, 5, 0, 0],
+      [0, 5, 0, 0, 0],
+      [0, 5, 0, 0, 0],
+    ],
+    8: [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    9: [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 5, 5],
+      [0, 5, 5, 0, 5],
+      [0, 0, 0, 0, 5],
+      [0, 0, 0, 5, 0],
+      [0, 5, 5, 0, 0],
+    ],
+    "!": [[5], [5], [5], [5], [5], [0], [5]],
+    "?": [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [0, 0, 0, 5, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 5, 0, 0],
+    ],
+    ".": [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 5, 0],
+      [5, 5, 5],
+      [0, 5, 0],
+    ],
+    ",": [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 5, 5],
+      [0, 5, 0],
+      [5, 0, 0],
+    ],
+    " ": [[0], [0], [0], [0], [0], [0], [0]],
+    ":": [
+      [0, 5, 0],
+      [5, 5, 5],
+      [0, 5, 0],
+      [0, 0, 0],
+      [0, 5, 0],
+      [5, 5, 5],
+      [0, 5, 0],
+    ],
+    ";": [
+      [0, 5, 0],
+      [5, 5, 5],
+      [0, 5, 0],
+      [0, 0, 0],
+      [0, 5, 5],
+      [0, 5, 0],
+      [5, 0, 0],
+    ],
+    $: [
+      [0, 0, 5, 0, 0],
+      [0, 5, 5, 5, 0],
+      [5, 0, 5, 0, 0],
+      [0, 5, 5, 5, 0],
+      [0, 0, 5, 0, 5],
+      [0, 5, 5, 5, 0],
+      [0, 0, 5, 0, 0],
+    ],
+    "#": [
+      [0, 5, 0, 5, 0],
+      [0, 5, 0, 5, 0],
+      [5, 5, 5, 5, 5],
+      [0, 5, 0, 5, 0],
+      [5, 5, 5, 5, 5],
+      [0, 5, 0, 5, 0],
+      [0, 5, 0, 5, 0],
+    ],
+    "@": [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 5, 5],
+      [5, 0, 5, 0, 5],
+      [5, 0, 5, 5, 0],
+      [5, 0, 0, 0, 0],
+      [0, 5, 5, 5, 0],
+    ],
+    "+": [
+      [0, 0, 0, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [5, 5, 5, 5, 5],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 0, 0, 0],
+    ],
+    "-": [
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [5, 5, 5, 5, 5],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+    ],
+    "=": [
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [5, 5, 5, 5, 5],
+      [0, 0, 0, 0, 0],
+      [5, 5, 5, 5, 5],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+    ],
+    "&": [
+      [0, 5, 0, 0, 0],
+      [5, 0, 5, 0, 0],
+      [5, 0, 5, 0, 0],
+      [0, 5, 0, 0, 0],
+      [5, 0, 5, 0, 5],
+      [5, 0, 0, 5, 0],
+      [0, 5, 5, 0, 5],
+    ],
+    "%": [
+      [0, 5, 0, 0, 5],
+      [5, 0, 5, 0, 5],
+      [0, 5, 0, 5, 0],
+      [0, 0, 5, 0, 0],
+      [0, 5, 0, 5, 0],
+      [5, 0, 5, 0, 5],
+      [5, 0, 0, 5, 0],
+    ],
+    "~": [
+      [0, 5, 0, 0, 5],
+      [5, 0, 5, 0, 5],
+      [5, 0, 0, 5, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+    ],
+    "*": [
+      [0, 0, 0, 0, 0],
+      [5, 0, 0, 0, 5],
+      [0, 5, 0, 5, 0],
+      [5, 5, 5, 5, 5],
+      [0, 5, 0, 5, 0],
+      [5, 0, 0, 0, 5],
+      [0, 0, 0, 0, 0],
+    ],
+    "(": [
+      [0, 0, 5],
+      [0, 5, 0],
+      [5, 0, 0],
+      [5, 0, 0],
+      [5, 0, 0],
+      [0, 5, 0],
+      [0, 0, 5],
+    ],
+    "'": [[5], [5], [5], [0], [0], [0], [0]],
+    "`": [
+      [5, 0],
+      [0, 5],
+      [0, 0],
+      [0, 0],
+      [0, 0],
+      [0, 0],
+      [0, 0],
+    ],
+    ")": [
+      [5, 0, 0],
+      [0, 5, 0],
+      [0, 0, 5],
+      [0, 0, 5],
+      [0, 0, 5],
+      [0, 5, 0],
+      [5, 0, 0],
+    ],
+    '"': [
+      [5, 0, 5],
+      [5, 0, 5],
+      [5, 0, 5],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ],
+    _: [
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [5, 5, 5, 5, 5],
+    ],
+    "±": [
+      [0, 5, 5, 0, 5, 5, 0],
+      [5, 0, 0, 5, 0, 0, 5],
+      [5, 0, 0, 0, 0, 0, 5],
+      [5, 0, 0, 0, 0, 0, 5],
+      [0, 5, 0, 0, 0, 5, 0],
+      [0, 0, 5, 0, 5, 0, 0],
+      [0, 0, 0, 5, 0, 0, 0],
+    ],
+  };
+  return allLetters[string] ?? DEF;
 }
