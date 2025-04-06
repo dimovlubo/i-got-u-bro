@@ -76,17 +76,28 @@
         color: #777; /* Keep the same text color when hovered */
         cursor: not-allowed; /* Ensure cursor remains not-allowed */
       }
-      input {
+
+      #custom-text-input {
         width: 90%;
         padding: 5px;
         margin-top: 5px;
         display: none;
       }
+
       #error-message {
         color: red;
         font-size: 12px;
         display: none;
         margin-top: 3px;
+      }
+      #scrolling-label {
+        margin-top: 5px;
+        display: flex;
+        align-items: center;
+      }
+      #speed-label {
+        font-size: 12px;
+        margin-top: 5px;
       }
     </style>
   </head>
@@ -97,12 +108,30 @@
     <input
       type="text"
       id="custom-text-input"
-      maxlength="11"
+      maxlength="280"
       placeholder="Enter text..."
     />
-    <p id="error-message">Text must be between 1 and 10 characters!</p>
+
+    <label id="scrolling-label">
+      <input type="checkbox" id="scrolling-mode" checked />
+      Scrolling Mode
+    </label>
+
+    <label id="speed-label" for="scroll-speed"
+      >Speed (slow → fast)
+      <input
+        style="width: 90%"
+        type="range"
+        id="scroll-speed"
+        min="50"
+        max="500"
+        value="200"
+        step="10"
+      />
+    </label>
+    <p id="error-message">Text must be between 1 and 280 characters!</p>
     <button id="confirm-text">Confirm</button>
     <button id="cancel-text">Cancel</button>
-    <button id="reset-button">Take the BLUE Pill</button>
+    <button id="reset-button">Take the BLUE pill</button>
   </body>
 </html>

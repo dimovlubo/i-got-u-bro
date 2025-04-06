@@ -6,12 +6,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   const cancelTextBtn = document.getElementById("cancel-text");
   const errorMessage = document.getElementById("error-message");
   const resetButton = document.getElementById("reset-button");
+  const scrollingCheckbox = document.getElementById("scrolling-mode");
+  const speedSlider = document.getElementById("scroll-speed");
+  const scrollingLabel = document.getElementById("scrolling-label");
+  const speedLabel = document.getElementById("speed-label");
 
   // Initially hide input, confirm button, and error message
   customTextInput.style.display = "none";
   confirmTextBtn.style.display = "none";
   errorMessage.style.display = "none";
   cancelTextBtn.style.display = "none";
+  speedLabel.style.display = "none";
+  scrollingLabel.style.display = "none";
 
   // Retrieve stored state (but check if the page is still active)
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -62,14 +68,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     addCustomTextBtn.style.display = !isVisible ? "none" : "block";
     cancelTextBtn.style.display = isVisible ? "none" : "block";
     resetButton.style.display = !isVisible ? "none" : "block";
+    scrollingLabel.style.display = isVisible ? "none" : "flex";
+    speedLabel.style.display = isVisible ? "none" : "block";
     customTextInput.focus();
     errorMessage.style.display = "none";
+    scrollingCheckbox.checked = !isVisible;
   }
 
   // "Confirm" button
   const confirmText = async () => {
     const text = customTextInput.value.trim();
-    if (text.length > 0 && text.length <= 11) {
+    const isScrolling = scrollingCheckbox.checked;
+    const rawSpeed = parseInt(speedSlider.value, 10);
+
+    const speed = 500 - rawSpeed;
+
+    if (text.length > 0 && text.length <= 280) {
       errorMessage.style.display = "none";
 
       // Ensure content.js is injected before sending the message
@@ -79,7 +93,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
 
       // Send the message AFTER injection
-      chrome.tabs.sendMessage(tab.id, { type: "CUSTOM_TEXT", payload: text });
+      chrome.tabs.sendMessage(tab.id, {
+        type: "CUSTOM_TEXT",
+        payload: { text, isScrolling, speed },
+      });
 
       makeMeGreatBtn.disabled = true;
       addCustomTextBtn.disabled = true;
@@ -90,7 +107,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       chrome.action.setIcon({ path: "../images/icon-48.png" });
     } else {
-      errorMessage.innerText = "Text must be between 1 and 10 characters!";
+      errorMessage.innerText = "Text must be between 1 and 280 characters!";
       errorMessage.style.display = "block";
       errorMessage.style.color = "red";
     }

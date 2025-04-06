@@ -7,8 +7,14 @@
 
   chrome.runtime.onMessage.addListener(function (request) {
     if (request.type === "CUSTOM_TEXT") {
-      const text = request.payload.toUpperCase().trim().split("").map(String);
-      createAdvancedGrid(text);
+      const { text, isScrolling, speed } = request.payload;
+      const textArr = text.toUpperCase().trim().split("").map(String);
+
+      if (isScrolling) {
+        startMarquee(textArr, speed);
+      } else {
+        createAdvancedGrid(textArr);
+      }
       loadModifications();
     }
   });
@@ -16,19 +22,99 @@
   createBasicGrid();
   loadModifications();
 
+  let marqueeInterval;
+
+  function startMarquee(text, speed = 200) {
+    if (marqueeInterval) clearInterval(marqueeInterval);
+
+    const mappedLetters = text.map((letter, index) => {
+      if (index === text.length - 1) {
+        return getLetter(letter);
+      } else if (index === 0) {
+        return addZeroColumn(getLetter(letter), true, true);
+      }
+      return addZeroColumn(getLetter(letter), true);
+    });
+
+    const baseMatrix = transformNestedToMatrix(mappedLetters);
+    const ROWS = baseMatrix.length;
+    const COLS = baseMatrix[0].length;
+    const VIEWPORT_COLS = getTotalGridCols();
+
+    let offset = 0;
+
+    marqueeInterval = setInterval(() => {
+      const slicedMatrix = createMatrixByNum(ROWS, VIEWPORT_COLS);
+
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < VIEWPORT_COLS; col++) {
+          const srcCol = (offset + col) % COLS;
+          slicedMatrix[row][col] = baseMatrix[row][srcCol];
+        }
+      }
+
+      updateCalendar(slicedMatrix);
+      offset = (offset + 1) % COLS;
+    }, speed);
+  }
+
+  function updateCalendar(matrix) {
+    const calendarDays = document.querySelectorAll(
+      "tbody .ContributionCalendar-day"
+    );
+    if (!calendarDays.length) return;
+
+    calendarDays.forEach((calendarDay) => {
+      const [row, col] = calendarDay.id.split("-").slice(-2).map(Number);
+      const rawValue = matrix[row]?.[col] ?? 0;
+      const level = getRandomInt(rawValue, 3);
+
+      const tooltipId = calendarDay.getAttribute("aria-labelledby");
+
+      try {
+        setTooltip(tooltipId, level);
+      } catch (err) {
+        console.warn("Tooltip error:", err);
+      }
+
+      calendarDay.setAttribute("data-level", level);
+    });
+  }
+
   function createAdvancedGrid(text) {
     const mappedLetters = text.map((letter, index) => {
       if (index === text.length - 1) {
         return getLetter(letter);
       }
-      return addZeroColumn(getLetter(letter));
+      return addZeroColumn(getLetter(letter), true);
     });
+
+    let lettersMatrix = transformNestedToMatrix(mappedLetters);
+
+    const totalGridCols = getTotalGridCols();
+    const textWidth = lettersMatrix[0].length;
+    const offset = Math.floor((totalGridCols - textWidth) / 2);
+    const endPadding = totalGridCols - (textWidth + offset);
+
+    const emptyCol = Array(lettersMatrix.length).fill(0);
+
+    lettersMatrix = lettersMatrix[0].map((_, colIndex) =>
+      lettersMatrix.map((row) => row[colIndex])
+    );
+
+    const leftPadding = Array.from({ length: offset }, () => emptyCol);
+
+    const rightPadding = Array.from({ length: endPadding }, () => emptyCol);
+
+    lettersMatrix = [...leftPadding, ...lettersMatrix, ...rightPadding];
+
+    lettersMatrix = lettersMatrix[0].map((_, colIndex) =>
+      lettersMatrix.map((row) => row[colIndex])
+    );
 
     const calendarDays = document.querySelectorAll(
       "tbody .ContributionCalendar-day"
     );
-
-    const lettersMatrix = transformNestedToMatrix(mappedLetters);
 
     if (calendarDays.length > 0) {
       calendarDays.forEach((calendarDay) => {
@@ -116,7 +202,6 @@
     }
   }
   function createProfileContainer() {
-    /*HEre TESTING */
     const profileContainer = document.querySelector(
       ".js-profile-editable-replace"
     );
@@ -224,6 +309,18 @@
     createContributionPerYear();
     createContibuitonActivityList();
     createContributionListing();
+  }
+  function getTotalGridCols() {
+    const calendarDays = document.querySelectorAll(
+      "tbody .ContributionCalendar-day"
+    );
+    const maxCol = Math.max(
+      ...Array.from(calendarDays).map((day) => {
+        const parts = day.id.split("-");
+        return parseInt(parts[parts.length - 1], 10);
+      })
+    );
+    return maxCol + 1;
   }
 })();
 
@@ -658,7 +755,7 @@ function createMatrixByNum(rows, cols, num = 0) {
     Array.from({ length: cols }, () => num)
   );
 }
-function addZeroColumn(matrix) {
+function addZeroColumn(matrix, push = true, unshift = false) {
   // Check if the matrix has 7 rows
   if (matrix.length !== 7) {
     return createMatrixByNum(7, 5);
@@ -666,7 +763,12 @@ function addZeroColumn(matrix) {
 
   // Add a column of zeros to each row
   for (let i = 0; i < matrix.length; i++) {
-    matrix[i].push(0); // Add 0 to the end of each row
+    if (push) {
+      matrix[i].push(0); // Add 0 to the end of each row
+    }
+    if (unshift) {
+      matrix[i].unshift(0, 0, 0);
+    }
   }
 
   return matrix; // Return the modified matrix
