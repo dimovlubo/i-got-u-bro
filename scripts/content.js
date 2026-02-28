@@ -1,115 +1,359 @@
 (() => {
-  const calendarDays = document.querySelectorAll(
-    "tbody .ContributionCalendar-day"
-  );
-  if (calendarDays.length > 0) {
-    calendarDays.forEach((calendarDay) =>
-      calendarDay.setAttribute("data-level", getRandomInt(4))
-    );
+  console.log("Content script loaded");
+  window.addEventListener("load", () => {
+    chrome.runtime.sendMessage({ type: "PAGE_RELOADED" });
+  });
+
+  const AI_LOADER_ID = "igotubro-ai-loader-overlay";
+  const AI_LOADER_TEXT = "AI Thinking...";
+
+  const AI_LOADER_ICON_SVG =
+    '<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="#e3e3e3" aria-hidden="true"><path d="M160-360q-50 0-85-35t-35-85q0-50 35-85t85-35v-80q0-33 23.5-56.5T240-760h120q0-50 35-85t85-35q50 0 85 35t35 85h120q33 0 56.5 23.5T800-680v80q50 0 85 35t35 85q0 50-35 85t-85 35v160q0 33-23.5 56.5T720-120H240q-33 0-56.5-23.5T160-200v-160Zm242.5-97.5Q420-475 420-500t-17.5-42.5Q385-560 360-560t-42.5 17.5Q300-525 300-500t17.5 42.5Q335-440 360-440t42.5-17.5Zm240 0Q660-475 660-500t-17.5-42.5Q625-560 600-560t-42.5 17.5Q540-525 540-500t17.5 42.5Q575-440 600-440t42.5-17.5ZM320-280h320v-80H320v80Zm-80 80h480v-480H240v480Zm240-240Z"/></svg>';
+
+  function showFakeLoader() {
+    if (document.getElementById(AI_LOADER_ID)) return;
+    const overlay = document.createElement("div");
+    overlay.id = AI_LOADER_ID;
+    overlay.innerHTML = `
+      <div style="
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        background: rgba(22, 27, 34, 0.6);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+        color: #e6edf3;
+      ">
+        <div style="width: 24px; height: 24px; opacity: 0.95;">${AI_LOADER_ICON_SVG}</div>
+        <p style="margin: 0; font-size: 1rem; font-weight: 500; letter-spacing: 0.02em;">${AI_LOADER_TEXT}</p>
+        <div style="width: 32px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.2); overflow: hidden;">
+          <div style="width: 40%; height: 100%; background: #58a6ff; border-radius: 2px; animation: igotubro-pulse 0.8s ease-in-out infinite;"></div>
+        </div>
+      </div>
+    `;
+    const style = document.createElement("style");
+    style.textContent = `@keyframes igotubro-pulse { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(24px); } }`;
+    overlay.appendChild(style);
+    document.documentElement.appendChild(overlay);
   }
 
-  const repositoriesCounters = document.querySelectorAll(".Counter");
-  if (repositoriesCounters.length > 0) {
-    repositoriesCounters.forEach((counter) => {
-      counter.textContent = getRandomInt(60, 180);
+  function hideFakeLoader() {
+    const el = document.getElementById(AI_LOADER_ID);
+    if (el) el.remove();
+  }
+
+  function showFakeLoaderThenRun(callback) {
+    showFakeLoader();
+    const delayMs = 1000 + Math.floor(Math.random() * 1000);
+    setTimeout(() => {
+      if (typeof callback === "function") callback();
+      hideFakeLoader();
+    }, delayMs);
+  }
+
+  chrome.runtime.onMessage.addListener(function (request) {
+    if (request.type === "RUN_WITH_LOADER") {
+      showFakeLoaderThenRun(() => {
+        createBasicGrid();
+        loadModifications();
+      });
+      return;
+    }
+    if (request.type === "CUSTOM_TEXT") {
+      const payload = request.payload;
+      if (!payload || typeof payload.text !== "string") return;
+      const text = payload.text.trim();
+      if (!text.length) return;
+      const textArr = text.toUpperCase().split("").map(String);
+      const isScrolling = Boolean(payload.isScrolling);
+      const speed =
+        typeof payload.speed === "number" && payload.speed > 0
+          ? payload.speed
+          : 200;
+
+      showFakeLoaderThenRun(() => {
+        if (isScrolling) {
+          startMarquee(textArr, speed);
+        } else {
+          createAdvancedGrid(textArr);
+        }
+        loadModifications();
+      });
+    }
+  });
+
+  createBasicGrid();
+  loadModifications();
+
+  let marqueeInterval;
+
+  function startMarquee(text, speed = 200) {
+    if (marqueeInterval) clearInterval(marqueeInterval);
+    if (!text || text.length === 0) return;
+
+    const mappedLetters = text.map((letter, index) => {
+      if (index === text.length - 1) {
+        return getLetter(letter);
+      } else if (index === 0) {
+        return addZeroColumn(getLetter(letter), true, true);
+      }
+      return addZeroColumn(getLetter(letter), true);
+    });
+
+    const baseMatrix = transformNestedToMatrix(mappedLetters);
+    if (!baseMatrix.length || !baseMatrix[0] || !baseMatrix[0].length) return;
+    const ROWS = baseMatrix.length;
+    const COLS = baseMatrix[0].length;
+    const VIEWPORT_COLS = getTotalGridCols();
+    if (VIEWPORT_COLS <= 0) return;
+
+    let offset = 0;
+
+    marqueeInterval = setInterval(() => {
+      const slicedMatrix = createMatrixByNum(ROWS, VIEWPORT_COLS);
+
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < VIEWPORT_COLS; col++) {
+          const srcCol = (offset + col) % COLS;
+          slicedMatrix[row][col] = baseMatrix[row][srcCol];
+        }
+      }
+
+      updateCalendar(slicedMatrix);
+      offset = (offset + 1) % COLS;
+    }, speed);
+  }
+
+  function updateCalendar(matrix) {
+    const calendarDays = document.querySelectorAll(
+      "tbody .ContributionCalendar-day",
+    );
+    if (!calendarDays.length) return;
+
+    calendarDays.forEach((calendarDay) => {
+      const [row, col] = calendarDay.id.split("-").slice(-2).map(Number);
+      const rawValue = matrix[row]?.[col] ?? 0;
+      const level = getRandomInt(rawValue, 3);
+
+      const tooltipId = calendarDay.getAttribute("aria-labelledby");
+
+      try {
+        setTooltip(tooltipId, level);
+      } catch (err) {
+        console.warn("Tooltip error:", err);
+      }
+
+      calendarDay.setAttribute("data-level", level);
     });
   }
 
-  const popularRepositories = document.querySelector(
-    ".js-pinned-items-reorder-container"
-  );
-  if (popularRepositories) {
+  function createAdvancedGrid(text) {
+    if (!text || text.length === 0) return;
+    const mappedLetters = text.map((letter, index) => {
+      if (index === text.length - 1) {
+        return getLetter(letter);
+      }
+      return addZeroColumn(getLetter(letter), true);
+    });
 
-    const blankContainer = popularRepositories.querySelector('.blankslate-container');
+    let lettersMatrix = transformNestedToMatrix(mappedLetters);
+    if (!lettersMatrix.length || !lettersMatrix[0] || !lettersMatrix[0].length)
+      return;
 
-    if(blankContainer) {
-      blankContainer.innerHTML = ''
-      popularRepositories.append(createDomElement('<ol class="d-flex flex-wrap list-style-none gutter-condensed mb-4"></ol>'))
+    const totalGridCols = getTotalGridCols();
+    const textWidth = lettersMatrix[0].length;
+    const offset = Math.floor((totalGridCols - textWidth) / 2);
+    const endPadding = totalGridCols - (textWidth + offset);
 
+    const emptyCol = Array(lettersMatrix.length).fill(0);
+
+    lettersMatrix = lettersMatrix[0].map((_, colIndex) =>
+      lettersMatrix.map((row) => row[colIndex]),
+    );
+
+    const leftPadding = Array.from({ length: offset }, () => emptyCol);
+
+    const rightPadding = Array.from({ length: endPadding }, () => emptyCol);
+
+    lettersMatrix = [...leftPadding, ...lettersMatrix, ...rightPadding];
+
+    lettersMatrix = lettersMatrix[0].map((_, colIndex) =>
+      lettersMatrix.map((row) => row[colIndex]),
+    );
+
+    const calendarDays = document.querySelectorAll(
+      "tbody .ContributionCalendar-day",
+    );
+
+    if (calendarDays.length > 0) {
+      calendarDays.forEach((calendarDay) => {
+        const getDayCoordinates = calendarDay.id.split("-").slice(-2);
+        const row = +getDayCoordinates[0];
+        const col = +getDayCoordinates[1];
+        const randomNum = getRandomInt(lettersMatrix[row][col], 3);
+
+        const tooltipId = calendarDay.getAttribute("aria-labelledby");
+        setTooltip(tooltipId, randomNum);
+
+        calendarDay.setAttribute("data-level", randomNum);
+      });
     }
-    const popularRepositoriesList = popularRepositories.querySelector("ol");
-    let popularReposLength = popularRepositoriesList.children.length;
-    
+  }
+  function createBasicGrid() {
+    const calendarDays = document.querySelectorAll(
+      "tbody .ContributionCalendar-day",
+    );
 
-    if (popularReposLength < 6) {
-      for (let repo = 0; repo < 6 - popularReposLength; repo++) {
-        const language = getRandomLanguage();
-        popularRepositoriesList.append(
+    if (calendarDays.length > 0) {
+      calendarDays.forEach((calendarDay) => {
+        const randomNum = getRandomInt(5);
+        const tooltipId = calendarDay.getAttribute("aria-labelledby");
+        setTooltip(tooltipId, randomNum);
+
+        calendarDay.setAttribute("data-level", randomNum);
+      });
+    }
+  }
+  function createRepositoriesCounters() {
+    const repositoriesCounters = document.querySelectorAll(".Counter");
+    if (repositoriesCounters.length > 0) {
+      repositoriesCounters.forEach((counter) => {
+        counter.textContent = getRandomInt(180, 60);
+      });
+    }
+  }
+  function createPopularRepositories() {
+    const popularRepositories = document.querySelector(
+      ".js-pinned-items-reorder-container",
+    );
+
+    if (popularRepositories) {
+      const blankContainer = popularRepositories.querySelector(
+        ".blankslate-container",
+      );
+
+      if (blankContainer) {
+        blankContainer.innerHTML = "";
+        popularRepositories.append(
           createDomElement(
-            getSingleRepository({
-              name: getRandomRepoName(),
-              description: getRandomDescription(),
-              language: language,
-              languageColor: languageMap()[language],
-              forks: `${getRandomInt(1, 4)}.${getRandomInt(9)}k`,
-              stars: `${getRandomInt(1, 4)}.${getRandomInt(9)}k`,
-            })
-          )
+            '<ol class="d-flex flex-wrap list-style-none gutter-condensed mb-4"></ol>',
+          ),
         );
+      }
+      const popularRepositoriesList = popularRepositories.querySelector("ol");
+      let popularReposLength = popularRepositoriesList.children.length;
+
+      if (popularReposLength < 6) {
+        for (let repo = 0; repo < 6 - popularReposLength; repo++) {
+          const language = getRandomLanguage();
+          popularRepositoriesList.append(
+            createDomElement(
+              getSingleRepository({
+                name: getRandomRepoName(),
+                description: getRandomDescription(),
+                language: language,
+                languageColor: languageMap()[language],
+                forks: `${getRandomInt(1, 4)}.${getRandomInt(9)}k`,
+                stars: `${getRandomInt(1, 4)}.${getRandomInt(9)}k`,
+              }),
+            ),
+          );
+        }
       }
     }
   }
-
-  const profileFollowers = document.querySelector(
-    ".js-profile-editable-area a.Link--secondary span"
-  );
-  if (profileFollowers) {
-    profileFollowers.innerText = `${getRandomInt(1, 4)}.${getRandomInt(9)}k`;
+  function createProfileFollowers() {
+    const profileFollowers = document.querySelector(
+      ".js-profile-editable-area a.Link--secondary span",
+    );
+    if (profileFollowers) {
+      profileFollowers.innerText = `${getRandomInt(4, 1)}.${getRandomInt(9)}k`;
+    }
   }
+  function createProfileContainer() {
+    const profileContainer = document.querySelector(
+      ".js-profile-editable-replace",
+    );
 
-  const profileAchievementsDetails = document.querySelector(
-    ".js-profile-editable-replace"
-  );
-  if (profileAchievementsDetails) {
-    console.log(profileAchievementsDetails.childNodes)
-    const lastChild = profileAchievementsDetails.childNodes.length - 2;
-    const achievementsEl = createDomElement(getAchievementHTML());
+    if (!profileContainer) return;
+
+    const userInfoSection = profileContainer.querySelector(
+      ".js-profile-editable-area",
+    );
+    if (!userInfoSection) return;
+
+    const blockOrReportBtn = profileContainer.querySelector(
+      "button[id^='dialog-show-dialog'].Button",
+    );
+    if (!blockOrReportBtn) return;
+
+    const userInfoSectionParent = userInfoSection.parentNode;
+    const userInfoSectionIndex = Array.from(profileContainer.children).indexOf(
+      userInfoSectionParent,
+    );
+
+    const preservedTail = document.createDocumentFragment();
+
+    for (let i = 0; i <= userInfoSectionIndex; i++) {
+      const child = profileContainer.children[i];
+      if (child) preservedTail.appendChild(child.cloneNode(true));
+    }
+
     const highlightsEl = createDomElement(getHighlightsHtml());
-    profileAchievementsDetails.insertBefore(
-      highlightsEl,
-      profileAchievementsDetails.childNodes[lastChild]
-    );
-    profileAchievementsDetails.insertBefore(
-      achievementsEl,
-      profileAchievementsDetails.childNodes[lastChild]
-    );
+    const achievementsEl = createDomElement(getAchievementHTML());
+
+    preservedTail.appendChild(achievementsEl);
+    preservedTail.appendChild(highlightsEl);
+    preservedTail.appendChild(blockOrReportBtn);
+
+    profileContainer.innerHTML = "";
+    profileContainer.appendChild(preservedTail);
   }
-
-  const contributionsPerYear = document.querySelector(
-    ".js-yearly-contributions h2"
-  );
-  if (contributionsPerYear) {
-    contributionsPerYear.innerText = `${getRandomInt(
-      1300,
-      30
-    )} contributions in the last year`;
+  function createContributionPerYear() {
+    const contributionsPerYear = document.querySelector(
+      ".js-yearly-contributions h2",
+    );
+    if (contributionsPerYear) {
+      contributionsPerYear.innerText = `${getRandomInt(
+        1300,
+        30,
+      )} contributions in the last year`;
+    }
   }
+  function createContibuitonActivityList() {
+    const contributionsActivityList = document.querySelector(
+      "ul.filter-list.small",
+    );
+    if (contributionsActivityList) {
+      const yearsActivity = contributionsActivityList.children.length;
+      const currentYear = new Date().getFullYear();
+      const yearDiff = currentYear - yearsActivity;
 
-  const contributionsActivityList = document.querySelector(
-    "ul.filter-list.small"
-  );
-  if (contributionsActivityList) {
-    const yearsActivity = contributionsActivityList.children.length;
-    const currentYear = new Date().getFullYear();
-    const yearDiff = currentYear - yearsActivity;
+      const randomYear = getRandomInt(10, 3);
 
-    const randomYear = getRandomInt(10, 3);
-
-    if (yearDiff > currentYear - randomYear) {
-      for (let i = 0; i < randomYear; i++) {
-        contributionsActivityList.append(
-          createDomElement(getYearElement(yearDiff - i))
-        );
+      if (yearDiff > currentYear - randomYear) {
+        for (let i = 0; i < randomYear; i++) {
+          contributionsActivityList.append(
+            createDomElement(getYearElement(yearDiff - i)),
+          );
+        }
       }
     }
   }
-
-  const contributionActivityListing = document.querySelector(
-    ".contribution-activity-listing"
-  );
-  if (contributionActivityListing) {
-    contributionActivityListing.innerHTML = "";
-    contributionActivityListing.append(
+  function createContributionListing() {
+    const contributionActivityListing = document.querySelector(
+      ".contribution-activity-listing",
+    );
+    if (contributionActivityListing) {
+      contributionActivityListing.innerHTML = "";
+    }
+    contributionActivityListing?.append(
       createDomElement(
         getActivityListing({
           currentMonth: new Date().toLocaleDateString("default", {
@@ -121,9 +365,31 @@
             month: "short",
           }),
           dayOfTheMonth: new Date().getDate(),
-        })
-      )
+        }),
+      ),
     );
+  }
+  function loadModifications() {
+    createRepositoriesCounters();
+    createPopularRepositories();
+    createProfileFollowers();
+    createProfileContainer();
+    createContributionPerYear();
+    createContibuitonActivityList();
+    createContributionListing();
+  }
+  function getTotalGridCols() {
+    const calendarDays = document.querySelectorAll(
+      "tbody .ContributionCalendar-day",
+    );
+    if (!calendarDays.length) return 0;
+    const maxCol = Math.max(
+      ...Array.from(calendarDays).map((day) => {
+        const parts = day.id ? day.id.split("-") : [];
+        return parseInt(parts[parts.length - 1], 10) || 0;
+      }),
+    );
+    return Number.isFinite(maxCol) && maxCol >= 0 ? maxCol + 1 : 0;
   }
 })();
 
@@ -133,6 +399,7 @@ function createDomElement(html) {
 }
 
 function getRandomInt(max, min = 0) {
+  if (min >= max) return getRandomInt(2);
   min = Math.ceil(min);
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min) + min);
@@ -236,17 +503,6 @@ function getAchievementHTML() {
   </h2>
   <div class="d-flex flex-wrap">
   ${achievements.slice(0, getRandomInt(achievements.length, 1)).join("\n")}
-  </div>
-  <div class="mt-2">
-    <span
-      title="Feature Release Label: Beta"
-      aria-label="Feature Release Label: Beta"
-      data-view-component="true"
-      class="Label Label--success Label--inline text-normal px-2 mr-1"
-      >Beta</span
-    ><a class="text-small" href="#"
-      >Send feedback</a
-    >
   </div>
 </div>
   `;
@@ -399,9 +655,8 @@ function getRandomDescription() {
     "Open-source app for tracking goals.",
     "Minimalistic template with customizable functionality.",
     "Collection of design patterns for scalable software.",
-    "Plugin for extending development tools."
+    "Plugin for extending development tools.",
   ];
-  ;
   return description[getRandomInt(description.length)];
 }
 
@@ -513,4 +768,625 @@ function getHighlightsHtml() {
 
 function getImageUrl(url) {
   return chrome.runtime.getURL(url);
+}
+function getContributionsNum(num) {
+  const contributionMap = {
+    0: { min: 0, max: 0 },
+    1: { min: 1, max: 2 },
+    2: { min: 3, max: 5 },
+    3: { min: 6, max: 9 },
+    4: { min: 10, max: 100 },
+  };
+  const range = contributionMap[Number(num)];
+  if (
+    !range ||
+    typeof range.min !== "number" ||
+    typeof range.max !== "number"
+  ) {
+    return 0;
+  }
+  return getRandomInt(range.max, range.min);
+}
+function setTooltip(tooltipId, randomNum) {
+  if (!tooltipId) return;
+  const tooltip = document.getElementById(tooltipId);
+  if (!tooltip) return;
+  let tooltipContributionNumToText = getContributionsNum(randomNum);
+  if (tooltipContributionNumToText === 0) {
+    tooltipContributionNumToText = "No contribution";
+  } else if (tooltipContributionNumToText === 1) {
+    tooltipContributionNumToText = "1 contribution";
+  } else {
+    tooltipContributionNumToText = `${tooltipContributionNumToText} contributions`;
+  }
+  const toolTipTextArr = (tooltip.innerText || "").split(" on ");
+  const datePart =
+    toolTipTextArr.length > 0 ? toolTipTextArr[toolTipTextArr.length - 1] : "";
+  tooltip.innerText = datePart
+    ? `${tooltipContributionNumToText} on ${datePart}`
+    : tooltipContributionNumToText;
+}
+
+function createMatrixByNum(rows, cols, num = 0) {
+  return Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => num),
+  );
+}
+function cloneMatrix(matrix) {
+  if (!matrix || !matrix.length) return [];
+  return matrix.map((row) => (Array.isArray(row) ? [...row] : []));
+}
+
+function addZeroColumn(matrix, push = true, unshift = false) {
+  const m = cloneMatrix(matrix);
+  if (m.length !== 7) {
+    return createMatrixByNum(7, 5);
+  }
+  for (let i = 0; i < m.length; i++) {
+    if (push) m[i].push(0);
+    if (unshift) m[i].unshift(0, 0, 0);
+  }
+  return m;
+}
+function transformNestedToMatrix(mappedLetters) {
+  if (!mappedLetters || !mappedLetters.length || !mappedLetters[0]) {
+    return createMatrixByNum(7, 0);
+  }
+  const lettersTotalLenght = mappedLetters.reduce((acc, currArr) => {
+    if (currArr && currArr.length > 0) {
+      return acc + (currArr[0]?.length ?? 0);
+    }
+    return acc;
+  }, 0);
+  const ROWS = mappedLetters[0].length;
+  const COLS = lettersTotalLenght;
+  if (COLS <= 0) return createMatrixByNum(ROWS, 0);
+
+  let matrix = createMatrixByNum(ROWS, COLS);
+  let colStart = 0;
+
+  for (let group of mappedLetters) {
+    if (!group || !group.length) continue;
+    for (let row = 0; row < ROWS; row++) {
+      if (group[row]) {
+        const values = group[row];
+        for (let i = 0; i < values.length; i++) {
+          if (colStart + i < COLS) {
+            matrix[row][colStart + i] = values[i];
+          }
+        }
+      }
+    }
+    const maxLen = Math.max(0, ...group.map((row) => (row ? row.length : 0)));
+    colStart += maxLen;
+    if (colStart >= COLS) break;
+  }
+
+  return matrix;
+}
+
+function getLetter(string) {
+  const safeChar =
+    typeof string === "string" && string.length > 0 ? string[0] : " ";
+  const DEF = createMatrixByNum(7, 5, getRandomInt(5));
+  const allLetters = {
+    A: [
+      [0, 0, 5, 0, 0],
+      [0, 5, 0, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 5, 5, 5, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+    ],
+    B: [
+      [5, 5, 5, 5, 0],
+      [0, 5, 0, 0, 5],
+      [0, 5, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+      [0, 5, 0, 0, 5],
+      [0, 5, 0, 0, 5],
+      [5, 5, 5, 5, 0],
+    ],
+    C: [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    D: [
+      [5, 5, 5, 5, 0],
+      [0, 5, 0, 0, 5],
+      [0, 5, 0, 0, 5],
+      [0, 5, 0, 0, 5],
+      [0, 5, 0, 0, 5],
+      [0, 5, 0, 0, 5],
+      [5, 5, 5, 5, 0],
+    ],
+    E: [
+      [5, 5, 5, 5, 5],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 5, 5, 5, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 5, 5, 5, 5],
+    ],
+    F: [
+      [5, 5, 5, 5, 5],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 5, 5, 5, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+    ],
+    G: [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 5, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    H: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 5, 5, 5, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+    ],
+    I: [
+      [5, 5, 5],
+      [0, 5, 0],
+      [0, 5, 0],
+      [0, 5, 0],
+      [0, 5, 0],
+      [0, 5, 0],
+      [5, 5, 5],
+    ],
+    J: [
+      [0, 0, 5, 5, 5],
+      [0, 0, 0, 5, 0],
+      [0, 0, 0, 5, 0],
+      [0, 0, 0, 5, 0],
+      [0, 0, 0, 5, 0],
+      [5, 0, 0, 5, 0],
+      [0, 5, 5, 0, 0],
+    ],
+    K: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 5, 0],
+      [5, 0, 5, 0, 0],
+      [5, 5, 0, 0, 0],
+      [5, 0, 5, 0, 0],
+      [5, 0, 0, 5, 0],
+      [5, 0, 0, 0, 5],
+    ],
+    L: [
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 5, 5, 5, 5],
+    ],
+    M: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 5, 0, 5, 5],
+      [5, 0, 5, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+    ],
+    N: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 5, 0, 0, 5],
+      [5, 0, 5, 0, 5],
+      [5, 0, 0, 5, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+    ],
+    O: [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    P: [
+      [5, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 5, 5, 5, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+    ],
+    Q: [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 5, 0, 0, 5],
+      [5, 0, 5, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    R: [
+      [5, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 5, 5, 5, 0],
+      [5, 0, 5, 0, 0],
+      [5, 0, 0, 5, 0],
+      [5, 0, 0, 0, 5],
+    ],
+    S: [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 0],
+      [0, 5, 5, 5, 0],
+      [0, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    T: [
+      [5, 5, 5, 5, 5],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+    ],
+    U: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    V: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 0, 5, 0],
+      [0, 5, 0, 5, 0],
+      [0, 5, 0, 5, 0],
+      [0, 0, 5, 0, 0],
+    ],
+    W: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 5, 0, 5],
+      [5, 0, 5, 0, 5],
+      [5, 5, 0, 5, 5],
+      [5, 0, 0, 0, 5],
+    ],
+    X: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 0, 5, 0],
+      [0, 0, 5, 0, 0],
+      [0, 5, 0, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+    ],
+    Y: [
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 0, 5, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+    ],
+    Z: [
+      [5, 5, 5, 5, 5],
+      [0, 0, 0, 0, 5],
+      [0, 0, 0, 5, 0],
+      [0, 0, 5, 0, 0],
+      [0, 5, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 5, 5, 5, 5],
+    ],
+    0: [
+      [0, 0, 5, 0, 0],
+      [0, 5, 0, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 0, 5, 0],
+      [0, 0, 5, 0, 0],
+    ],
+    1: [
+      [0, 0, 5, 0, 0],
+      [0, 5, 5, 0, 0],
+      [5, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [5, 5, 5, 5, 5],
+    ],
+    2: [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [0, 0, 0, 0, 5],
+      [0, 0, 5, 5, 0],
+      [0, 5, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 5, 5, 5, 5],
+    ],
+    3: [
+      [5, 5, 5, 5, 5],
+      [0, 0, 0, 0, 5],
+      [0, 0, 0, 5, 0],
+      [0, 0, 5, 5, 0],
+      [0, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    4: [
+      [0, 0, 0, 5, 0],
+      [0, 0, 5, 5, 0],
+      [0, 5, 0, 5, 0],
+      [5, 0, 0, 5, 0],
+      [5, 5, 5, 5, 5],
+      [0, 0, 0, 5, 0],
+      [0, 0, 0, 5, 0],
+    ],
+    5: [
+      [5, 5, 5, 5, 5],
+      [5, 0, 0, 0, 0],
+      [5, 0, 5, 5, 0],
+      [5, 5, 0, 0, 5],
+      [0, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    6: [
+      [0, 0, 5, 5, 0],
+      [0, 5, 0, 0, 0],
+      [5, 0, 0, 0, 0],
+      [5, 0, 5, 5, 0],
+      [5, 5, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    7: [
+      [5, 5, 5, 5, 5],
+      [0, 0, 0, 0, 5],
+      [0, 0, 0, 5, 0],
+      [0, 0, 0, 5, 0],
+      [0, 0, 5, 0, 0],
+      [0, 5, 0, 0, 0],
+      [0, 5, 0, 0, 0],
+    ],
+    8: [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 0, 5],
+      [0, 5, 5, 5, 0],
+    ],
+    9: [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 5, 5],
+      [0, 5, 5, 0, 5],
+      [0, 0, 0, 0, 5],
+      [0, 0, 0, 5, 0],
+      [0, 5, 5, 0, 0],
+    ],
+    "!": [[5], [5], [5], [5], [5], [0], [5]],
+    "?": [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [0, 0, 0, 5, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 5, 0, 0],
+    ],
+    ".": [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 5, 0],
+      [5, 5, 5],
+      [0, 5, 0],
+    ],
+    ",": [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 5, 5],
+      [0, 5, 0],
+      [5, 0, 0],
+    ],
+    " ": [[0], [0], [0], [0], [0], [0], [0]],
+    ":": [
+      [0, 5, 0],
+      [5, 5, 5],
+      [0, 5, 0],
+      [0, 0, 0],
+      [0, 5, 0],
+      [5, 5, 5],
+      [0, 5, 0],
+    ],
+    ";": [
+      [0, 5, 0],
+      [5, 5, 5],
+      [0, 5, 0],
+      [0, 0, 0],
+      [0, 5, 5],
+      [0, 5, 0],
+      [5, 0, 0],
+    ],
+    $: [
+      [0, 0, 5, 0, 0],
+      [0, 5, 5, 5, 0],
+      [5, 0, 5, 0, 0],
+      [0, 5, 5, 5, 0],
+      [0, 0, 5, 0, 5],
+      [0, 5, 5, 5, 0],
+      [0, 0, 5, 0, 0],
+    ],
+    "#": [
+      [0, 5, 0, 5, 0],
+      [0, 5, 0, 5, 0],
+      [5, 5, 5, 5, 5],
+      [0, 5, 0, 5, 0],
+      [5, 5, 5, 5, 5],
+      [0, 5, 0, 5, 0],
+      [0, 5, 0, 5, 0],
+    ],
+    "@": [
+      [0, 5, 5, 5, 0],
+      [5, 0, 0, 0, 5],
+      [5, 0, 0, 5, 5],
+      [5, 0, 5, 0, 5],
+      [5, 0, 5, 5, 0],
+      [5, 0, 0, 0, 0],
+      [0, 5, 5, 5, 0],
+    ],
+    "+": [
+      [0, 0, 0, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [5, 5, 5, 5, 5],
+      [0, 0, 5, 0, 0],
+      [0, 0, 5, 0, 0],
+      [0, 0, 0, 0, 0],
+    ],
+    "-": [
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [5, 5, 5, 5, 5],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+    ],
+    "=": [
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [5, 5, 5, 5, 5],
+      [0, 0, 0, 0, 0],
+      [5, 5, 5, 5, 5],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+    ],
+    "&": [
+      [0, 5, 0, 0, 0],
+      [5, 0, 5, 0, 0],
+      [5, 0, 5, 0, 0],
+      [0, 5, 0, 0, 0],
+      [5, 0, 5, 0, 5],
+      [5, 0, 0, 5, 0],
+      [0, 5, 5, 0, 5],
+    ],
+    "%": [
+      [0, 5, 0, 0, 5],
+      [5, 0, 5, 0, 5],
+      [0, 5, 0, 5, 0],
+      [0, 0, 5, 0, 0],
+      [0, 5, 0, 5, 0],
+      [5, 0, 5, 0, 5],
+      [5, 0, 0, 5, 0],
+    ],
+    "~": [
+      [0, 5, 0, 0, 5],
+      [5, 0, 5, 0, 5],
+      [5, 0, 0, 5, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+    ],
+    "*": [
+      [0, 0, 0, 0, 0],
+      [5, 0, 0, 0, 5],
+      [0, 5, 0, 5, 0],
+      [5, 5, 5, 5, 5],
+      [0, 5, 0, 5, 0],
+      [5, 0, 0, 0, 5],
+      [0, 0, 0, 0, 0],
+    ],
+    "(": [
+      [0, 0, 5],
+      [0, 5, 0],
+      [5, 0, 0],
+      [5, 0, 0],
+      [5, 0, 0],
+      [0, 5, 0],
+      [0, 0, 5],
+    ],
+    "'": [[5], [5], [5], [0], [0], [0], [0]],
+    "`": [
+      [5, 0],
+      [0, 5],
+      [0, 0],
+      [0, 0],
+      [0, 0],
+      [0, 0],
+      [0, 0],
+    ],
+    ")": [
+      [5, 0, 0],
+      [0, 5, 0],
+      [0, 0, 5],
+      [0, 0, 5],
+      [0, 0, 5],
+      [0, 5, 0],
+      [5, 0, 0],
+    ],
+    '"': [
+      [5, 0, 5],
+      [5, 0, 5],
+      [5, 0, 5],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ],
+    _: [
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [5, 5, 5, 5, 5],
+    ],
+    "±": [
+      [0, 5, 5, 0, 5, 5, 0],
+      [5, 0, 0, 5, 0, 0, 5],
+      [5, 0, 0, 0, 0, 0, 5],
+      [5, 0, 0, 0, 0, 0, 5],
+      [0, 5, 0, 0, 0, 5, 0],
+      [0, 0, 5, 0, 5, 0, 0],
+      [0, 0, 0, 5, 0, 0, 0],
+    ],
+  };
+  const matrix = allLetters[safeChar] ?? DEF;
+  return cloneMatrix(matrix);
 }

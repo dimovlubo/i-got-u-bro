@@ -1,45 +1,24 @@
-
 chrome.runtime.onInstalled.addListener(() => {
   chrome.action.setBadgeText({
-    text: 'BETA'
+    text: "BETA",
   });
 });
 
-const gitHubURL = 'https://github.com/';
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!message || !message.type) return;
 
-let isSwitchedOn = true;
-
-chrome.action.onClicked.addListener(async (tab) => {
-  if (tab.url.startsWith(gitHubURL)) {
-
-    if (isSwitchedOn) {
-      isSwitchedOn = false;
-
-      await chrome.scripting.executeScript({
-        files: ['scripts/content.js'],
-        target: { tabId: tab.id },
+  if (message.type === "PAGE_RELOADED") {
+    chrome.storage.session.clear(() => {
+      console.log("Session storage cleared.");
+      chrome.storage.session.set({ buttonsDisabled: false });
+      chrome.runtime.sendMessage({ type: "RESET_BUTTONS" }).catch((err) => {
+        if (err.message.includes("Could not establish connection")) {
+          // Popup is not open — it's safe to ignore
+          console.warn("Popup not open. Skipping RESET_BUTTONS message.");
+        } else {
+          console.error(err);
+        }
       });
-
-      await chrome.action.setIcon({
-        tabId: tab.id,
-        path: 'images/icon-48.png'
-      })
-      
-    } else {
-      isSwitchedOn = true;
-
-      await chrome.action.setIcon({
-        tabId: tab.id,
-        path: 'images/icon-48-n.png'
-      })
-
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: reloadWindow
-      })
-    }
+    });
   }
 });
-function reloadWindow() {
-  window.location.reload();
-}
