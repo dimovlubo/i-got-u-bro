@@ -19,14 +19,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   speedLabel.style.display = "none";
   scrollingLabel.style.display = "none";
 
-  // Retrieve stored state (but check if the page is still active)
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-  chrome.storage.session.get(["buttonsDisabled"], (result) => {
-    const buttonsDisabled = result.buttonsDisabled || false;
-    makeMeGreatBtn.disabled = buttonsDisabled;
-    addCustomTextBtn.disabled = buttonsDisabled;
-  });
+  if (!tab || !tab.id) {
+    makeMeGreatBtn.disabled = true;
+    addCustomTextBtn.disabled = true;
+    makeMeGreatBtn.title = addCustomTextBtn.title = "Open a GitHub tab first";
+  } else {
+    chrome.storage.session.get(["buttonsDisabled"], (result) => {
+      const buttonsDisabled = result.buttonsDisabled || false;
+      makeMeGreatBtn.disabled = buttonsDisabled;
+      addCustomTextBtn.disabled = buttonsDisabled;
+    });
+  }
 
   // Listen for reset message from background.js
   chrome.runtime.onMessage.addListener((message) => {
@@ -38,16 +43,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // "Make Me Great" button
   makeMeGreatBtn.addEventListener("click", async () => {
-    if (tab.url.startsWith("https://github.com/")) {
+    if (!tab?.id || !tab?.url?.startsWith("https://github.com/")) return;
+    try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         files: ["scripts/content.js"],
       });
+    } catch (e) {
+      console.error("Extension failed to run on this tab:", e);
+      return;
     }
     makeMeGreatBtn.disabled = true;
     addCustomTextBtn.disabled = true;
     chrome.storage.session.set({ buttonsDisabled: true });
-
     chrome.action.setIcon({ path: "../images/icon-48.png" });
   });
 
@@ -80,31 +88,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     const text = customTextInput.value.trim();
     const isScrolling = scrollingCheckbox.checked;
     const rawSpeed = parseInt(speedSlider.value, 10);
-
     const speed = 500 - rawSpeed;
 
     if (text.length > 0 && text.length <= 280) {
+      if (!tab?.id || !tab?.url?.startsWith("https://github.com/")) {
+        errorMessage.innerText = "Open a GitHub profile tab first.";
+        errorMessage.style.display = "block";
+        errorMessage.style.color = "red";
+        return;
+      }
       errorMessage.style.display = "none";
 
-      // Ensure content.js is injected before sending the message
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ["scripts/content.js"],
-      });
-
-      // Send the message AFTER injection
-      chrome.tabs.sendMessage(tab.id, {
-        type: "CUSTOM_TEXT",
-        payload: { text, isScrolling, speed },
-      });
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ["scripts/content.js"],
+        });
+        chrome.tabs.sendMessage(tab.id, {
+          type: "CUSTOM_TEXT",
+          payload: { text, isScrolling, speed },
+        });
+      } catch (e) {
+        errorMessage.innerText = "Reload the GitHub page and try again.";
+        errorMessage.style.display = "block";
+        errorMessage.style.color = "red";
+        return;
+      }
 
       makeMeGreatBtn.disabled = true;
       addCustomTextBtn.disabled = true;
       chrome.storage.session.set({ buttonsDisabled: true });
-
       checkVisibility();
       customTextInput.value = "";
-
       chrome.action.setIcon({ path: "../images/icon-48.png" });
     } else {
       errorMessage.innerText = "Text must be between 1 and 280 characters!";
@@ -122,13 +137,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   resetButton.addEventListener("click", async () => {
     makeMeGreatBtn.disabled = false;
     addCustomTextBtn.disabled = false;
-
     chrome.storage.session.clear();
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => window.location.reload(),
-    });
-
+    if (tab?.id) {
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => window.location.reload(),
+        });
+      } catch (_) {}
+    }
     chrome.action.setIcon({ path: "../images/icon-48-n.png" });
   });
 

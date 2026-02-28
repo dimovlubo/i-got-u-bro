@@ -7,8 +7,16 @@
 
   chrome.runtime.onMessage.addListener(function (request) {
     if (request.type === "CUSTOM_TEXT") {
-      const { text, isScrolling, speed } = request.payload;
-      const textArr = text.toUpperCase().trim().split("").map(String);
+      const payload = request.payload;
+      if (!payload || typeof payload.text !== "string") return;
+      const text = payload.text.trim();
+      if (!text.length) return;
+      const textArr = text.toUpperCase().split("").map(String);
+      const isScrolling = Boolean(payload.isScrolling);
+      const speed =
+        typeof payload.speed === "number" && payload.speed > 0
+          ? payload.speed
+          : 200;
 
       if (isScrolling) {
         startMarquee(textArr, speed);
@@ -26,6 +34,7 @@
 
   function startMarquee(text, speed = 200) {
     if (marqueeInterval) clearInterval(marqueeInterval);
+    if (!text || text.length === 0) return;
 
     const mappedLetters = text.map((letter, index) => {
       if (index === text.length - 1) {
@@ -37,9 +46,11 @@
     });
 
     const baseMatrix = transformNestedToMatrix(mappedLetters);
+    if (!baseMatrix.length || !baseMatrix[0] || !baseMatrix[0].length) return;
     const ROWS = baseMatrix.length;
     const COLS = baseMatrix[0].length;
     const VIEWPORT_COLS = getTotalGridCols();
+    if (VIEWPORT_COLS <= 0) return;
 
     let offset = 0;
 
@@ -60,7 +71,7 @@
 
   function updateCalendar(matrix) {
     const calendarDays = document.querySelectorAll(
-      "tbody .ContributionCalendar-day"
+      "tbody .ContributionCalendar-day",
     );
     if (!calendarDays.length) return;
 
@@ -82,6 +93,7 @@
   }
 
   function createAdvancedGrid(text) {
+    if (!text || text.length === 0) return;
     const mappedLetters = text.map((letter, index) => {
       if (index === text.length - 1) {
         return getLetter(letter);
@@ -90,6 +102,8 @@
     });
 
     let lettersMatrix = transformNestedToMatrix(mappedLetters);
+    if (!lettersMatrix.length || !lettersMatrix[0] || !lettersMatrix[0].length)
+      return;
 
     const totalGridCols = getTotalGridCols();
     const textWidth = lettersMatrix[0].length;
@@ -99,7 +113,7 @@
     const emptyCol = Array(lettersMatrix.length).fill(0);
 
     lettersMatrix = lettersMatrix[0].map((_, colIndex) =>
-      lettersMatrix.map((row) => row[colIndex])
+      lettersMatrix.map((row) => row[colIndex]),
     );
 
     const leftPadding = Array.from({ length: offset }, () => emptyCol);
@@ -109,11 +123,11 @@
     lettersMatrix = [...leftPadding, ...lettersMatrix, ...rightPadding];
 
     lettersMatrix = lettersMatrix[0].map((_, colIndex) =>
-      lettersMatrix.map((row) => row[colIndex])
+      lettersMatrix.map((row) => row[colIndex]),
     );
 
     const calendarDays = document.querySelectorAll(
-      "tbody .ContributionCalendar-day"
+      "tbody .ContributionCalendar-day",
     );
 
     if (calendarDays.length > 0) {
@@ -132,7 +146,7 @@
   }
   function createBasicGrid() {
     const calendarDays = document.querySelectorAll(
-      "tbody .ContributionCalendar-day"
+      "tbody .ContributionCalendar-day",
     );
 
     if (calendarDays.length > 0) {
@@ -149,26 +163,26 @@
     const repositoriesCounters = document.querySelectorAll(".Counter");
     if (repositoriesCounters.length > 0) {
       repositoriesCounters.forEach((counter) => {
-        counter.textContent = getRandomInt(60, 180);
+        counter.textContent = getRandomInt(180, 60);
       });
     }
   }
   function createPopularRepositories() {
     const popularRepositories = document.querySelector(
-      ".js-pinned-items-reorder-container"
+      ".js-pinned-items-reorder-container",
     );
 
     if (popularRepositories) {
       const blankContainer = popularRepositories.querySelector(
-        ".blankslate-container"
+        ".blankslate-container",
       );
 
       if (blankContainer) {
         blankContainer.innerHTML = "";
         popularRepositories.append(
           createDomElement(
-            '<ol class="d-flex flex-wrap list-style-none gutter-condensed mb-4"></ol>'
-          )
+            '<ol class="d-flex flex-wrap list-style-none gutter-condensed mb-4"></ol>',
+          ),
         );
       }
       const popularRepositoriesList = popularRepositories.querySelector("ol");
@@ -186,8 +200,8 @@
                 languageColor: languageMap()[language],
                 forks: `${getRandomInt(1, 4)}.${getRandomInt(9)}k`,
                 stars: `${getRandomInt(1, 4)}.${getRandomInt(9)}k`,
-              })
-            )
+              }),
+            ),
           );
         }
       }
@@ -195,7 +209,7 @@
   }
   function createProfileFollowers() {
     const profileFollowers = document.querySelector(
-      ".js-profile-editable-area a.Link--secondary span"
+      ".js-profile-editable-area a.Link--secondary span",
     );
     if (profileFollowers) {
       profileFollowers.innerText = `${getRandomInt(4, 1)}.${getRandomInt(9)}k`;
@@ -203,64 +217,57 @@
   }
   function createProfileContainer() {
     const profileContainer = document.querySelector(
-      ".js-profile-editable-replace"
+      ".js-profile-editable-replace",
     );
 
-    if (profileContainer) {
-      // Grab the user info section (avatar, name, bio, etc.)
-      const userInfoSection = profileContainer.querySelector(
-        ".js-profile-editable-area"
-      ).parentNode;
+    if (!profileContainer) return;
 
-      // Find the Block or Report button
-      const blockOrReportBtn = profileContainer.querySelector(
-        "button[id^='dialog-show-dialog'].Button"
-      );
+    const userInfoSection = profileContainer.querySelector(
+      ".js-profile-editable-area",
+    );
+    if (!userInfoSection) return;
 
-      // Determine where the "Block or Report" section begins
-      const blockReportIndex = Array.from(profileContainer.children).indexOf(
-        blockOrReportBtn
-      );
+    const blockOrReportBtn = profileContainer.querySelector(
+      "button[id^='dialog-show-dialog'].Button",
+    );
+    if (!blockOrReportBtn) return;
 
-      const userInfoSectionIndex = Array.from(
-        profileContainer.children
-      ).indexOf(userInfoSection);
+    const userInfoSectionParent = userInfoSection.parentNode;
+    const userInfoSectionIndex = Array.from(profileContainer.children).indexOf(
+      userInfoSectionParent,
+    );
 
-      // Preserve the original Block or Report section
-      const preservedTail = document.createDocumentFragment();
+    const preservedTail = document.createDocumentFragment();
 
-      for (let i = 0; i <= userInfoSectionIndex; i++) {
-        preservedTail.appendChild(
-          profileContainer.children[i]?.cloneNode(true)
-        );
-      }
-
-      const highlightsEl = createDomElement(getHighlightsHtml());
-      const achievementsEl = createDomElement(getAchievementHTML());
-
-      preservedTail.appendChild(achievementsEl);
-      preservedTail.appendChild(highlightsEl);
-      preservedTail.appendChild(blockOrReportBtn);
-
-      profileContainer.innerHTML = "";
-
-      profileContainer.appendChild(preservedTail);
+    for (let i = 0; i <= userInfoSectionIndex; i++) {
+      const child = profileContainer.children[i];
+      if (child) preservedTail.appendChild(child.cloneNode(true));
     }
+
+    const highlightsEl = createDomElement(getHighlightsHtml());
+    const achievementsEl = createDomElement(getAchievementHTML());
+
+    preservedTail.appendChild(achievementsEl);
+    preservedTail.appendChild(highlightsEl);
+    preservedTail.appendChild(blockOrReportBtn);
+
+    profileContainer.innerHTML = "";
+    profileContainer.appendChild(preservedTail);
   }
   function createContributionPerYear() {
     const contributionsPerYear = document.querySelector(
-      ".js-yearly-contributions h2"
+      ".js-yearly-contributions h2",
     );
     if (contributionsPerYear) {
       contributionsPerYear.innerText = `${getRandomInt(
         1300,
-        30
+        30,
       )} contributions in the last year`;
     }
   }
   function createContibuitonActivityList() {
     const contributionsActivityList = document.querySelector(
-      "ul.filter-list.small"
+      "ul.filter-list.small",
     );
     if (contributionsActivityList) {
       const yearsActivity = contributionsActivityList.children.length;
@@ -272,7 +279,7 @@
       if (yearDiff > currentYear - randomYear) {
         for (let i = 0; i < randomYear; i++) {
           contributionsActivityList.append(
-            createDomElement(getYearElement(yearDiff - i))
+            createDomElement(getYearElement(yearDiff - i)),
           );
         }
       }
@@ -280,7 +287,7 @@
   }
   function createContributionListing() {
     const contributionActivityListing = document.querySelector(
-      ".contribution-activity-listing"
+      ".contribution-activity-listing",
     );
     if (contributionActivityListing) {
       contributionActivityListing.innerHTML = "";
@@ -297,8 +304,8 @@
             month: "short",
           }),
           dayOfTheMonth: new Date().getDate(),
-        })
-      )
+        }),
+      ),
     );
   }
   function loadModifications() {
@@ -312,15 +319,16 @@
   }
   function getTotalGridCols() {
     const calendarDays = document.querySelectorAll(
-      "tbody .ContributionCalendar-day"
+      "tbody .ContributionCalendar-day",
     );
+    if (!calendarDays.length) return 0;
     const maxCol = Math.max(
       ...Array.from(calendarDays).map((day) => {
-        const parts = day.id.split("-");
-        return parseInt(parts[parts.length - 1], 10);
-      })
+        const parts = day.id ? day.id.split("-") : [];
+        return parseInt(parts[parts.length - 1], 10) || 0;
+      }),
     );
-    return maxCol + 1;
+    return Number.isFinite(maxCol) && maxCol >= 0 ? maxCol + 1 : 0;
   }
 })();
 
@@ -701,98 +709,86 @@ function getImageUrl(url) {
   return chrome.runtime.getURL(url);
 }
 function getContributionsNum(num) {
-  if (!num) {
-    num = 0;
-  }
-
   const contributionMap = {
-    0: {
-      min: 0,
-      max: 0,
-    },
-    1: {
-      min: 1,
-      max: 2,
-    },
-    2: {
-      min: 3,
-      max: 5,
-    },
-    3: {
-      min: 6,
-      max: 9,
-    },
-    4: {
-      min: 10,
-      max: 100,
-    },
+    0: { min: 0, max: 0 },
+    1: { min: 1, max: 2 },
+    2: { min: 3, max: 5 },
+    3: { min: 6, max: 9 },
+    4: { min: 10, max: 100 },
   };
-  return getRandomInt(contributionMap[num].max, contributionMap[num].min);
+  const range = contributionMap[Number(num)];
+  if (
+    !range ||
+    typeof range.min !== "number" ||
+    typeof range.max !== "number"
+  ) {
+    return 0;
+  }
+  return getRandomInt(range.max, range.min);
 }
 function setTooltip(tooltipId, randomNum) {
-  if (tooltipId) {
-    const tooltip = document.getElementById(tooltipId);
-    if (tooltip) {
-      let tooltipContributionNumToText = getContributionsNum(randomNum);
-      if (tooltipContributionNumToText === 0) {
-        tooltipContributionNumToText = "No contribution";
-      } else if (tooltipContributionNumToText === 1) {
-        tooltipContributionNumToText = "1 contribution";
-      } else {
-        tooltipContributionNumToText = `${tooltipContributionNumToText} contributions`;
-      }
-
-      const toolTipTextArr = tooltip.innerText.split(" on ");
-      tooltip.innerText = `${tooltipContributionNumToText} on ${
-        toolTipTextArr[toolTipTextArr.length - 1]
-      }`;
-    }
+  if (!tooltipId) return;
+  const tooltip = document.getElementById(tooltipId);
+  if (!tooltip) return;
+  let tooltipContributionNumToText = getContributionsNum(randomNum);
+  if (tooltipContributionNumToText === 0) {
+    tooltipContributionNumToText = "No contribution";
+  } else if (tooltipContributionNumToText === 1) {
+    tooltipContributionNumToText = "1 contribution";
+  } else {
+    tooltipContributionNumToText = `${tooltipContributionNumToText} contributions`;
   }
+  const toolTipTextArr = (tooltip.innerText || "").split(" on ");
+  const datePart =
+    toolTipTextArr.length > 0 ? toolTipTextArr[toolTipTextArr.length - 1] : "";
+  tooltip.innerText = datePart
+    ? `${tooltipContributionNumToText} on ${datePart}`
+    : tooltipContributionNumToText;
 }
 
 function createMatrixByNum(rows, cols, num = 0) {
   return Array.from({ length: rows }, () =>
-    Array.from({ length: cols }, () => num)
+    Array.from({ length: cols }, () => num),
   );
 }
+function cloneMatrix(matrix) {
+  if (!matrix || !matrix.length) return [];
+  return matrix.map((row) => (Array.isArray(row) ? [...row] : []));
+}
+
 function addZeroColumn(matrix, push = true, unshift = false) {
-  // Check if the matrix has 7 rows
-  if (matrix.length !== 7) {
+  const m = cloneMatrix(matrix);
+  if (m.length !== 7) {
     return createMatrixByNum(7, 5);
   }
-
-  // Add a column of zeros to each row
-  for (let i = 0; i < matrix.length; i++) {
-    if (push) {
-      matrix[i].push(0); // Add 0 to the end of each row
-    }
-    if (unshift) {
-      matrix[i].unshift(0, 0, 0);
-    }
+  for (let i = 0; i < m.length; i++) {
+    if (push) m[i].push(0);
+    if (unshift) m[i].unshift(0, 0, 0);
   }
-
-  return matrix; // Return the modified matrix
+  return m;
 }
 function transformNestedToMatrix(mappedLetters) {
+  if (!mappedLetters || !mappedLetters.length || !mappedLetters[0]) {
+    return createMatrixByNum(7, 0);
+  }
   const lettersTotalLenght = mappedLetters.reduce((acc, currArr) => {
-    if (currArr.length > 0) {
-      return acc + currArr[0].length;
+    if (currArr && currArr.length > 0) {
+      return acc + (currArr[0]?.length ?? 0);
     }
     return acc;
   }, 0);
   const ROWS = mappedLetters[0].length;
   const COLS = lettersTotalLenght;
+  if (COLS <= 0) return createMatrixByNum(ROWS, 0);
 
   let matrix = createMatrixByNum(ROWS, COLS);
-
   let colStart = 0;
 
-  // Iterate over each nested group
   for (let group of mappedLetters) {
+    if (!group || !group.length) continue;
     for (let row = 0; row < ROWS; row++) {
       if (group[row]) {
-        // Ensure the row exists in the group
-        let values = group[row];
+        const values = group[row];
         for (let i = 0; i < values.length; i++) {
           if (colStart + i < COLS) {
             matrix[row][colStart + i] = values[i];
@@ -800,19 +796,18 @@ function transformNestedToMatrix(mappedLetters) {
         }
       }
     }
-
-    // Move the starting column index forward for the next group
-    colStart += Math.max(...group.map((row) => row.length));
-
-    // Stop if we've reached or exceeded column limit
+    const maxLen = Math.max(0, ...group.map((row) => (row ? row.length : 0)));
+    colStart += maxLen;
     if (colStart >= COLS) break;
   }
 
   return matrix;
 }
 
-function getLetter(string = A) {
-  const DEF = createMatrixByNum(7, 53, getRandomInt(5));
+function getLetter(string) {
+  const safeChar =
+    typeof string === "string" && string.length > 0 ? string[0] : " ";
+  const DEF = createMatrixByNum(7, 5, getRandomInt(5));
   const allLetters = {
     A: [
       [0, 0, 5, 0, 0],
@@ -1030,7 +1025,7 @@ function getLetter(string = A) {
       [5, 0, 0, 0, 5],
       [5, 0, 0, 0, 5],
     ],
-    X: [
+    Y: [
       [5, 0, 0, 0, 5],
       [5, 0, 0, 0, 5],
       [0, 5, 0, 5, 0],
@@ -1331,5 +1326,6 @@ function getLetter(string = A) {
       [0, 0, 0, 5, 0, 0, 0],
     ],
   };
-  return allLetters[string] ?? DEF;
+  const matrix = allLetters[safeChar] ?? DEF;
+  return cloneMatrix(matrix);
 }
