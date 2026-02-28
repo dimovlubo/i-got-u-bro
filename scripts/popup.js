@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // "Make Me Great" button
+  // "Make Me Great" button (RED pill)
   makeMeGreatBtn.addEventListener("click", async () => {
     if (!tab?.id || !tab?.url?.startsWith("https://github.com/")) return;
     try {
@@ -49,6 +49,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         target: { tabId: tab.id },
         files: ["scripts/content.js"],
       });
+      chrome.tabs.sendMessage(tab.id, { type: "RUN_WITH_LOADER" });
     } catch (e) {
       console.error("Extension failed to run on this tab:", e);
       return;
@@ -108,6 +109,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           type: "CUSTOM_TEXT",
           payload: { text, isScrolling, speed },
         });
+        // Loader is shown and delay handled inside content.js
       } catch (e) {
         errorMessage.innerText = "Reload the GitHub page and try again.";
         errorMessage.style.display = "block";

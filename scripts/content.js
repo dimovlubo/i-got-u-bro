@@ -1,11 +1,70 @@
 (() => {
   console.log("Content script loaded");
-  // Detect when the page refreshes and reset button states
   window.addEventListener("load", () => {
     chrome.runtime.sendMessage({ type: "PAGE_RELOADED" });
   });
 
+  const AI_LOADER_ID = "igotubro-ai-loader-overlay";
+  const AI_LOADER_TEXT = "Loading...";
+
+  const AI_LOADER_ICON_SVG =
+    '<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="#e3e3e3" aria-hidden="true"><path d="M160-360q-50 0-85-35t-35-85q0-50 35-85t85-35v-80q0-33 23.5-56.5T240-760h120q0-50 35-85t85-35q50 0 85 35t35 85h120q33 0 56.5 23.5T800-680v80q50 0 85 35t35 85q0 50-35 85t-85 35v160q0 33-23.5 56.5T720-120H240q-33 0-56.5-23.5T160-200v-160Zm242.5-97.5Q420-475 420-500t-17.5-42.5Q385-560 360-560t-42.5 17.5Q300-525 300-500t17.5 42.5Q335-440 360-440t42.5-17.5Zm240 0Q660-475 660-500t-17.5-42.5Q625-560 600-560t-42.5 17.5Q540-525 540-500t17.5 42.5Q575-440 600-440t42.5-17.5ZM320-280h320v-80H320v80Zm-80 80h480v-480H240v480Zm240-240Z"/></svg>';
+
+  function showFakeLoader() {
+    if (document.getElementById(AI_LOADER_ID)) return;
+    const overlay = document.createElement("div");
+    overlay.id = AI_LOADER_ID;
+    overlay.innerHTML = `
+      <div style="
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        background: rgba(22, 27, 34, 0.6);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+        color: #e6edf3;
+      ">
+        <div style="width: 24px; height: 24px; opacity: 0.95;">${AI_LOADER_ICON_SVG}</div>
+        <p style="margin: 0; font-size: 1rem; font-weight: 500; letter-spacing: 0.02em;">${AI_LOADER_TEXT}</p>
+        <div style="width: 32px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.2); overflow: hidden;">
+          <div style="width: 40%; height: 100%; background: #58a6ff; border-radius: 2px; animation: igotubro-pulse 0.8s ease-in-out infinite;"></div>
+        </div>
+      </div>
+    `;
+    const style = document.createElement("style");
+    style.textContent = `@keyframes igotubro-pulse { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(24px); } }`;
+    overlay.appendChild(style);
+    document.documentElement.appendChild(overlay);
+  }
+
+  function hideFakeLoader() {
+    const el = document.getElementById(AI_LOADER_ID);
+    if (el) el.remove();
+  }
+
+  function showFakeLoaderThenRun(callback) {
+    showFakeLoader();
+    const delayMs = 1000 + Math.floor(Math.random() * 1000);
+    setTimeout(() => {
+      if (typeof callback === "function") callback();
+      hideFakeLoader();
+    }, delayMs);
+  }
+
   chrome.runtime.onMessage.addListener(function (request) {
+    if (request.type === "RUN_WITH_LOADER") {
+      showFakeLoaderThenRun(() => {
+        createBasicGrid();
+        loadModifications();
+      });
+      return;
+    }
     if (request.type === "CUSTOM_TEXT") {
       const payload = request.payload;
       if (!payload || typeof payload.text !== "string") return;
@@ -18,12 +77,14 @@
           ? payload.speed
           : 200;
 
-      if (isScrolling) {
-        startMarquee(textArr, speed);
-      } else {
-        createAdvancedGrid(textArr);
-      }
-      loadModifications();
+      showFakeLoaderThenRun(() => {
+        if (isScrolling) {
+          startMarquee(textArr, speed);
+        } else {
+          createAdvancedGrid(textArr);
+        }
+        loadModifications();
+      });
     }
   });
 
